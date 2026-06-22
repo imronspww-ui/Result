@@ -88,7 +88,7 @@
 
   <div class="grid-4">
     <div class="metric-card">
-      <div class="metric-label">ยอดขายรวม (15 วัน)</div>
+      <div class="metric-label" id="metricLabel0">ยอดขายรวม (15 วัน)</div>
       <div class="metric-value" style="color:#cc0000;">฿8.35M</div>
       <div class="metric-sub">8 สาขารวมกัน</div>
     </div>
@@ -120,7 +120,7 @@
   <div id="tab-summary" class="tab-content active">
     <div class="grid-2">
       <div class="card">
-        <div class="section-title">ยอดขายรวม 1–15 มิ.ย. รายสาขา</div>
+        <div class="section-title" id="barChartTitle">ยอดขายรวม 1–15 มิ.ย. รายสาขา</div>
         <div class="legend">
           <span><span class="legend-dot" style="background:#cc0000;"></span>ยอดขาย</span>
           <span><span class="legend-dot" style="background:#ddd;border:1px solid #bbb;"></span>เป้ารายเดือน (÷2)</span>
@@ -139,7 +139,7 @@
         <thead>
           <tr>
             <th>สาขา</th>
-            <th style="text-align:right;">ยอดขายรวม<br><span style="font-weight:400;font-size:10px;">(1–15 มิ.ย.)</span></th>
+            <th style="text-align:right;">ยอดขายรวม<br><span style="font-weight:400;font-size:10px;" id="tableDateRange">(1–15 มิ.ย.)</span></th>
             <th style="text-align:right;">ยอดเฉลี่ย/วัน</th>
             <th style="text-align:right;">Transactions</th>
             <th style="text-align:right;">Basket Size</th>
@@ -186,14 +186,14 @@
   <!-- TAB 3: Daily Chart -->
   <div id="tab-chart" class="tab-content">
     <div class="card">
-      <div class="section-title">กราฟยอดขายรายวัน — 1–15 มิ.ย. 2026</div>
+      <div class="section-title" id="lineChartTitle">กราฟยอดขายรายวัน — 1–15 มิ.ย. 2026</div>
       <div class="chart-wrap-tall"><canvas id="lineChart" role="img" aria-label="กราฟยอดขายรายวัน 8 สาขา">ยอดขายรายวัน</canvas></div>
     </div>
   </div>
 
 </div>
 
-<div class="footer">MR.D.I.Y. Branch Manager System · น้องเลย์ Multi-Agent · Daily Sales Report 1–15 มิ.ย. 2026</div>
+<div class="footer" id="footerText">MR.D.I.Y. Branch Manager System · น้องเลย์ Multi-Agent · Daily Sales Report 1–15 มิ.ย. 2026</div>
 
 <script>
 const branches = ['PMKP','PKOP','PPRP','PSOY','PNCP','PPAP','PBTY','PNEP'];
@@ -239,7 +239,7 @@ function renderTable() {
   const sorted = [...branches].sort((a,b) => totals[b]-totals[a]);
   sorted.forEach(b => {
     const total = totals[b];
-    const avg = Math.round(total/15);
+    const avg = Math.round(total/rawData.length);
     const txn = txnData[b];
     const basket = txn ? Math.round(total/txn) : 0;
     const halfTarget = monthTargets[b] / 2;
@@ -325,7 +325,7 @@ function renderDailyTable() {
     const isWeekend = ['06/06','07/06','08/06','13/06','14/06','15/06'].includes(d.date);
     const cells = branches.map(b => {
       const v = d[b]||0;
-      const avg = totals[b]/15;
+      const avg = totals[b]/rawData.length;
       const cls = v >= avg*1.1 ? 'high' : v < avg*0.85 ? 'low' : '';
       return `<td class="daily-cell ${cls}" style="text-align:right;">${(v/1000).toFixed(1)}K</td>`;
     }).join('');
@@ -459,6 +459,25 @@ function renderWeekly() {
     </div>`;
 }
 
+function updateDayLabels(monthYearLabel) {
+  if (!rawData.length) return;
+  const first = rawData[0].date;
+  const last = rawData[rawData.length - 1].date;
+  const rangeShort = first === last ? first : `${first}–${last}`;
+  const rangeFull = monthYearLabel ? `${rangeShort} ${monthYearLabel}` : rangeShort;
+
+  const lbl0 = document.getElementById('metricLabel0');
+  if (lbl0) lbl0.textContent = `ยอดขายรวม (${rawData.length} วัน)`;
+  const barTitle = document.getElementById('barChartTitle');
+  if (barTitle) barTitle.textContent = `ยอดขายรวม ${rangeShort} รายสาขา`;
+  const tblRange = document.getElementById('tableDateRange');
+  if (tblRange) tblRange.textContent = `(${rangeShort})`;
+  const lineTitle = document.getElementById('lineChartTitle');
+  if (lineTitle) lineTitle.textContent = `กราฟยอดขายรายวัน — ${rangeFull}`;
+  const footerEl = document.getElementById('footerText');
+  if (footerEl) footerEl.textContent = `MR.D.I.Y. Branch Manager System · น้องเลย์ Multi-Agent · Daily Sales Report ${rangeFull}`;
+}
+
 function showTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -472,6 +491,7 @@ renderBarChart();
 renderPieChart();
 renderDailyTable();
 renderLineChart();
+updateDayLabels('มิ.ย. 2026');
 
 // ── CSV Upload Handler ──
 function handleCSVUpload(input) {
@@ -499,19 +519,21 @@ function handleCSVUpload(input) {
 
         const months = new Set();
         const parsed = [];
+        let skippedBranch = 0, skippedDate = 0;
 
         for (const raw of rows) {
           const r = norm(raw);
           const dateStr = String(r['Date']||'').trim();
-          const branch  = String(r['Branch']||'').trim();
+          const branch  = String(r['Branch']||'').trim().toUpperCase();
           const sales   = parseSales(r['Total Sales']);
           const txn     = parseInt(String(r['จำนวนใบเสร็จทั้งหมด']||'0').replace(/,/g,'')) || 0;
           const target  = parseSales(r['Sales Target']);
-          if (!dateStr || !branch || !branches.includes(branch)) continue;
+          if (!dateStr) continue;
+          if (!branch || !branches.includes(branch)) { skippedBranch++; continue; }
           const parts = dateStr.split('/');
-          if (parts.length !== 3) continue;
+          if (parts.length !== 3) { skippedDate++; continue; }
           const [d, m, y] = parts.map(Number);
-          if (isNaN(d)||isNaN(m)||isNaN(y)) continue;
+          if (isNaN(d)||isNaN(m)||isNaN(y)) { skippedDate++; continue; }
           months.add(`${String(m).padStart(2,'0')}/${y}`);
           parsed.push({ d, m, y, branch, sales, txn, target, label: `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}` });
         }
@@ -568,18 +590,21 @@ function handleCSVUpload(input) {
         cards[0].querySelector('.metric-sub').textContent = `${days} วัน รวมกัน`;
         cards[1].querySelector('.metric-value').textContent = fmtM(grand/days/branches.length);
         cards[2].querySelector('.metric-value').textContent = topB;
-        cards[2].querySelector('.metric-sub').textContent = fmtM(totals[topB]);
+        cards[2].querySelector('.metric-sub').textContent = `${fmtM(totals[topB])} (${days} วัน)`;
         cards[3].querySelector('.metric-value').textContent = botB;
-        cards[3].querySelector('.metric-sub').textContent = fmtM(totals[botB]);
+        cards[3].querySelector('.metric-sub').textContent = `${fmtM(totals[botB])} (${days} วัน)`;
 
         renderTable();
         renderBarChart();
         renderPieChart();
         renderDailyTable();
         renderLineChart();
+        updateDayLabels(`${thaiM[lm]} ${ly}`);
 
         const statusEl = document.getElementById('uploadStatus');
-        statusEl.textContent = `✅ โหลดสำเร็จ — ${thaiM[lm]} ${ly} · ${filtered.length} รายการ · ${days} วัน`;
+        const skipped = skippedBranch + skippedDate;
+        statusEl.textContent = `✅ โหลดสำเร็จ — ${thaiM[lm]} ${ly} · ${filtered.length} รายการ · ${days} วัน` +
+          (skipped ? ` · ⚠️ ข้าม ${skipped} แถว (สาขาไม่ตรง ${skippedBranch} / วันที่ผิดรูปแบบ ${skippedDate})` : '');
         statusEl.style.display = 'block';
 
       } catch(e) {
