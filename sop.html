@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MR.D.I.Y. SOP Q&A — น้องสอป</title>
+<!-- Firebase SDK (เก็บลิงก์รูป) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="firebase-config.js"></script>
+<!-- ImgBB (เก็บไฟล์รูปจริง — ฟรี ไม่ต้องบัตรเครดิต) -->
+<script src="imgbb-config.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f3ef; color: #1a1a1a; min-height: 100vh; }
+.topbar { background: #cc0000; color: white; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
+.topbar-title { font-size: 16px; font-weight: 600; }
+.topbar-sub { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+.container { max-width: 800px; margin: 0 auto; padding: 20px; }
+.search-wrap { background: white; border-radius: 14px; border: 2px solid #e8e8e8; padding: 20px 22px; margin-bottom: 20px; transition: border-color 0.2s; }
+.search-wrap:focus-within { border-color: #cc0000; }
+.search-label { font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; }
+.search-row { display: flex; align-items: center; gap: 10px; }
+.search-icon { font-size: 20px; flex-shrink: 0; color: #bbb; }
+#searchBox { flex: 1; border: none; outline: none; font-size: 16px; font-family: inherit; color: #1a1a1a; background: transparent; }
+#searchBox::placeholder { color: #bbb; }
+.clear-btn { background: none; border: none; cursor: pointer; font-size: 16px; color: #ccc; padding: 4px; display: none; }
+.filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.filter-chip { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1.5px solid #e8e8e8; color: #666; background: white; transition: all 0.15s; }
+.filter-chip.active { background: #cc0000; color: white; border-color: #cc0000; }
+.result-count { font-size: 12px; color: #aaa; margin-bottom: 12px; }
+.qa-item { background: white; border-radius: 12px; border: 1px solid #e8e8e8; margin-bottom: 12px; overflow: hidden; transition: box-shadow 0.15s; cursor: pointer; }
+.qa-item:hover { box-shadow: 0 3px 12px rgba(0,0,0,0.07); }
+.qa-item.open { border-color: #cc0000; box-shadow: 0 3px 16px rgba(204,0,0,0.08); }
+.qa-q { padding: 14px 18px; display: flex; align-items: flex-start; gap: 12px; }
+.qa-tag { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; white-space: nowrap; flex-shrink: 0; margin-top: 2px; }
+.qa-q-text { font-size: 14px; font-weight: 600; flex: 1; line-height: 1.4; }
+.qa-arrow { color: #ccc; font-size: 14px; flex-shrink: 0; transition: transform 0.2s; margin-top: 2px; }
+.qa-item.open .qa-arrow { transform: rotate(180deg); color: #cc0000; }
+.qa-a { display: none; padding: 0 18px 16px 18px; border-top: 1px solid #f5f5f5; }
+.qa-item.open .qa-a { display: block; }
+.qa-a-inner { padding-top: 14px; font-size: 13px; line-height: 1.7; color: #333; }
+.qa-a-inner ul { margin: 8px 0 8px 18px; }
+.qa-a-inner li { margin-bottom: 4px; }
+.qa-a-inner strong { color: #cc0000; }
+.qa-a-inner .note { background: #fff8e1; border-left: 3px solid #ffb300; padding: 8px 12px; border-radius: 0 6px 6px 0; margin-top: 10px; font-size: 12px; color: #795548; }
+.highlight { background: #ffeb3b55; border-radius: 2px; padding: 0 1px; }
+.no-result { text-align: center; padding: 40px 20px; color: #bbb; }
+.no-result-icon { font-size: 40px; margin-bottom: 12px; }
+.no-result-text { font-size: 14px; }
+.no-result-sub { font-size: 12px; margin-top: 6px; color: #ccc; }
+.suggest-wrap { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.suggest-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid #e0e0e0; background: white; font-size: 12px; cursor: pointer; color: #555; }
+.suggest-btn:hover { background: #f5f5f5; }
+.footer { text-align: center; font-size: 11px; color: #bbb; margin-top: 24px; padding-bottom: 20px; }
+.qa-img-section { margin-top: 14px; border-top: 1px dashed #e0e0e0; padding-top: 12px; }
+.qa-img-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.qa-img-thumb { position: relative; width: 100px; height: 80px; border-radius: 8px; overflow: hidden; border: 1px solid #e0e0e0; flex-shrink: 0; }
+.qa-img-thumb img { width: 100%; height: 100%; object-fit: cover; cursor: pointer; }
+.qa-img-del { position: absolute; top: 3px; right: 3px; background: rgba(0,0,0,0.55); color: white; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
+.qa-img-del:hover { background: #c62828; }
+.qa-img-add { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border: 1.5px dashed #bbb; border-radius: 8px; font-size: 12px; color: #888; cursor: pointer; background: #fafafa; transition: all 0.15s; }
+.qa-img-add:hover { border-color: #cc0000; color: #cc0000; background: #fff5f5; }
+.img-lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center; }
+.img-lightbox.show { display: flex; }
+.img-lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 10px; object-fit: contain; }
+.img-lightbox-close { position: absolute; top: 18px; right: 22px; color: white; font-size: 28px; cursor: pointer; line-height: 1; }
+</style>
+</head>
+<body>
+
+<div id="fbStatusBar" style="display:none;"></div>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:14px;">
+    <a href="index.html" style="display:inline-flex;align-items:center;gap:6px;color:white;text-decoration:none;background:rgba(255,255,255,0.18);border-radius:7px;padding:6px 12px;font-size:13px;font-weight:600;">← หน้าหลัก</a>
+    <div>
+      <div class="topbar-title">SOP Q&A — น้องสอป</div>
+      <div class="topbar-sub">ถามตอบ SOP การจัดสินค้า Display Guideline</div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="search-wrap">
+    <div class="search-label">ถามน้องสอป</div>
+    <div class="search-row">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchBox" placeholder="พิมพ์คำถาม เช่น จัดรองเท้า, ป้ายราคา, Power Tools..." oninput="doSearch()" />
+      <button class="clear-btn" id="clearBtn" onclick="clearSearch()">✕</button>
+    </div>
+    <div class="filter-row">
+      <span class="filter-chip active" onclick="setFilter('all',this)">ทั้งหมด</span>
+      <span class="filter-chip" onclick="setFilter('display',this)">🗂 จัดแสดงสินค้า</span>
+      <span class="filter-chip" onclick="setFilter('hardware',this)">🔧 Hardware</span>
+      <span class="filter-chip" onclick="setFilter('household',this)">🏠 Household</span>
+      <span class="filter-chip" onclick="setFilter('furnishing',this)">👟 Furnishing</span>
+      <span class="filter-chip" onclick="setFilter('electronics',this)">🔌 Electronics</span>
+      <span class="filter-chip" onclick="setFilter('jc',this)">💄 J&C</span>
+      <span class="filter-chip" onclick="setFilter('sop',this)">📋 SOP ทั่วไป</span>
+    </div>
+  </div>
+
+  <div class="result-count" id="resultCount"></div>
+  <div id="qaList"></div>
+
+</div>
+
+<!-- Lightbox -->
+<div class="img-lightbox" id="lightbox" onclick="closeLightbox()">
+  <span class="img-lightbox-close">✕</span>
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<div class="footer">MR.D.I.Y. Branch Manager System · น้องสอป · SOP & Display Guideline 2024</div>
+
+<script>
+const QA = [
+  // ── SOP ทั่วไป ──
+  { id:1, cat:'sop', tags:['ป้ายราคา','price tag','ราคา','ติด','วาง'],
+    q:'ป้ายราคาต้องติดไว้ที่ไหน?',
+    a:`<strong>ป้ายราคาต้องติดที่ด้านซ้ายของสินค้าเสมอ</strong> ทุกแผนก ทุกประเภทสินค้า<br><br>
+    ข้อกำหนดเพิ่มเติม:
+    <ul>
+      <li>เว้นระยะห่างจากขอบ / ฮุกข้างเคียงอย่างน้อย 2 นิ้ว</li>
+      <li>ป้ายต้องมองเห็นชัดเจน ไม่ถูกบังโดยสินค้า</li>
+      <li>ห้ามติดป้ายราคาบนตัวสินค้าโดยตรง (ยกเว้นกรณีที่กำหนด)</li>
+    </ul>
+    <div class="note">💡 ทุกแผนกใช้กฎเดียวกัน: ป้ายราคา → ซ้ายเสมอ</div>` },
+
+  { id:2, cat:'sop', tags:['ชั้นว่าง','เต็มชั้น','เว้นช่อง','stock','สต็อก'],
+    q:'ชั้นวางสินค้าว่างเปล่า ต้องทำอย่างไร?',
+    a:`<strong>จัดให้เต็มชั้น ไม่เว้นช่องว่างมากเกิน</strong><br><br>
+    แนวทางปฏิบัติ:
+    <ul>
+      <li>นำสินค้าประเภทเดียวกันมาเติม หรือขยับสินค้าเพื่อปิดช่องว่าง</li>
+      <li>ถ้าสต็อกน้อย → หันหน้าสินค้าออกหน้า (Face-out) เพื่อให้ดูเต็ม</li>
+      <li>ถ้าสต็อกเยอะ → หันข้าง (Side-stack) เพื่อประหยัดพื้นที่</li>
+      <li>แจ้ง Supervisor ทันทีหากสต็อกต่ำกว่า minimum</li>
+    </ul>
+    <div class="note">⚠️ ห้ามวางกล่องเปล่าหรือของประดับเพื่อให้ดูเต็มชั้น</div>` },
+
+  { id:3, cat:'sop', tags:['เหล็กกั้น','divider','กั้น','หล่น','ป้องกัน'],
+    q:'สินค้าประเภทไหนต้องใส่เหล็กกั้นหน้า (Divider)?',
+    a:`<strong>สินค้าที่อาจหล่นหรือเลื่อนออกได้ง่าย</strong> ต้องใส่เหล็กกั้นหน้าเสมอ ได้แก่:
+    <ul>
+      <li>เครื่องมือช่าง (ค้อน กรรไกร เลื่อย)</li>
+      <li>สีสเปรย์ (ต้องมีป้ายเตือนสินค้าอันตรายด้วย)</li>
+      <li>แผ่นชั้นไม้ (ต้องมีป้าย "ระวังของหล่นใส่ศีรษะ")</li>
+      <li>กรรไกรตัดหญ้า</li>
+      <li>สินค้าหนักที่อยู่ชั้นสูงกว่าระดับสายตา</li>
+    </ul>
+    <div class="note">💡 สินค้าอันตราย (ไวไฟ, มีคม) ต้องติดป้ายเตือนด้วยเสมอ</div>` },
+
+  { id:4, cat:'sop', tags:['จัดเรียง','ลำดับ','order','brand','ยี่ห้อ','ประเภท'],
+    q:'หลักการจัดเรียงสินค้าทั่วไปเป็นอย่างไร?',
+    a:`ลำดับการจัดแสดงมาตรฐาน MR.D.I.Y.:
+    <ul>
+      <li><strong>แบรนด์ → ประเภท → ขนาด → สี</strong> (สำหรับสินค้าทั่วไป)</li>
+      <li>เริ่มจากสินค้าที่มีสต็อกมากกว่า หรือราคาแพงกว่า ไว้ด้านบน/ด้านหน้า</li>
+      <li>สินค้าขนาดใหญ่ → ชั้นล่าง / ด้านหลัง</li>
+      <li>สินค้าขนาดเล็ก → ชั้นบน / ด้านหน้า</li>
+    </ul>
+    <div class="note">💡 แต่ละประเภทสินค้ามีลำดับเฉพาะ — ดูในหมวดนั้นๆ</div>` },
+
+  // ── Hardware ──
+  { id:5, cat:'hardware', tags:['power tools','เครื่องมือไฟฟ้า','EMTOP','FIXMAN','iNGCO','สว่าน','ไกรด์เดอร์'],
+    q:'จัดวาง Power Tools อย่างไร? EMTOP ใช้พื้นที่เท่าไหร่?',
+    a:`ลำดับการจัด: <strong>Brand → Type → Size (ใหญ่→เล็ก)</strong><br>
+    ลำดับ Type: Drills → Rotary hammer → Grinders → Saws → Blower<br><br>
+    <strong>พื้นที่ EMTOP ตามจำนวน SKU:</strong>
+    <ul>
+      <li>น้อยกว่า 4 SKU → จัดรวมกับแบรนด์อื่น</li>
+      <li>5-9 SKU → พื้นที่ 1 บาน</li>
+      <li>10-14 SKU → พื้นที่ 2 บาน</li>
+      <li>15 SKU ขึ้นไป → พื้นที่ 3 บาน</li>
+    </ul>
+    <strong>กฎสำคัญ EMTOP:</strong>
+    <ul>
+      <li>ต้องจัดที่ End Gondola ทางเข้าหลัก</li>
+      <li>สินค้าตัวโชว์ → รัดด้วย Cable Tie บนบาร์</li>
+      <li>สต็อก → วาง Top Shelf ติดเลขระบุตำแหน่ง</li>
+      <li>ป้องกันขโมย → กล่อง Keep + โซรัด + ล็อค</li>
+    </ul>
+    <div class="note">💡 ถ้า Pegboard มีอันเดียว → ให้ใช้กับ Power Tools ก่อน</div>` },
+
+  { id:6, cat:'hardware', tags:['ค้อน','hammer','แขวน','ชั้น'],
+    q:'จัดวางค้อน (Hammer) อย่างไร?',
+    a:`ลำดับ: <strong>ประเภท → ยี่ห้อ → ขนาด</strong><br><br>
+    ข้อกำหนด:
+    <ul>
+      <li>แขวนได้ไม่เกิน <strong>2 ชั้น</strong> (ป้องกันอันตรายจากการหล่น)</li>
+      <li>ใช้ 2 ฮุก กั้นหน้าและหลัง</li>
+    </ul>` },
+
+  { id:7, cat:'hardware', tags:['กรรไกรตัดหญ้า','garden shears','ตัดหญ้า','ฮุก'],
+    q:'จัดวางกรรไกรตัดหญ้าอย่างไร?',
+    a:`ลำดับ: <strong>ขนาด → ประเภท → ยี่ห้อ</strong><br><br>
+    ข้อกำหนด:
+    <ul>
+      <li>จัดแสดงได้ <strong>1 ชั้นเท่านั้น</strong> (ป้องกันอันตราย)</li>
+      <li>ใช้ 4 ฮุก ติดเหล็กกั้นหน้า</li>
+      <li>กรรไกรที่มีรูที่ดาม → คล้องกับฮุก</li>
+    </ul>` },
+
+  { id:8, cat:'hardware', tags:['สีสเปรย์','color spray','สเปรย์','ไวไฟ','อันตราย','สีพื้น'],
+    q:'จัดวางสีสเปรย์อย่างไร? ต้องทำป้ายอะไรบ้าง?',
+    a:`<strong>ตำแหน่ง:</strong> End Gondola แผนกเครื่องมือช่าง (กลุ่มสี)<br><br>
+    ลำดับ: <strong>ยี่ห้อ → ประเภท → สี</strong><br>
+    เริ่มสี: ขาว → ดำ → เทา → น้ำตาล → น้ำเงิน → สีสด<br><br>
+    ต้องมี:
+    <ul>
+      <li>การ์ดตัวอย่างสีในซองพลาสติก Own Use เสียบราง</li>
+      <li>เหล็กกั้นหน้า</li>
+      <li><strong>ป้ายเตือน "สินค้าอันตราย (ไวไฟ)"</strong></li>
+    </ul>` },
+
+  { id:9, cat:'hardware', tags:['แผ่นชั้นไม้','wood shelf','ไม้','ชั้นวาง','ป้ายระวัง'],
+    q:'จัดวางแผ่นชั้นไม้อย่างไร?',
+    a:`<strong>ตำแหน่ง:</strong> แผนกเครื่องมือช่าง ใกล้เหล็กฉากรับชั้น<br><br>
+    ลำดับ: <strong>ขนาด → วัสดุ → รูปทรง → สี</strong><br><br>
+    การวางตามสต็อก:
+    <ul>
+      <li>สต็อกเยอะ → หันข้าง (Side-stack)</li>
+      <li>สต็อกน้อย → หันหน้าออก (Face-out)</li>
+    </ul>
+    ต้องมี: เหล็กกั้นหน้า + <strong>ป้าย "ระวังของหล่นใส่ศีรษะ"</strong>` },
+
+  { id:10, cat:'hardware', tags:['ดอกไม้ปลอม','artificial flowers','ดอกไม้','ฮุก'],
+    q:'จัดวางดอกไม้ปลอมอย่างไร?',
+    a:`ใช้ฮุกเล็ก 2 ฮุกต่อ 1 SKU<br><br>
+    ข้อกำหนด:
+    <ul>
+      <li>จัดดอกไม้ตั้งขึ้น อยู่กึ่งกลางระหว่าง 2 ฮุก</li>
+      <li>ป้ายราคาด้านซ้าย เว้น 2 นิ้วจากฮุกถัดไป</li>
+      <li>จัดกลุ่มตามประเภทดอกไม้ และสี</li>
+    </ul>` },
+
+  // ── Household ──
+  { id:11, cat:'household', tags:['ไม้กวาด','broom','ที่โกย','dustpan','กวาด'],
+    q:'จัดวางไม้กวาดและที่โกยอย่างไร?',
+    a:`<strong>แยกที่โกยออกจากดาม</strong> แล้วจัดคู่กับดาม<br><br>
+    ลำดับจากทางเดินหลัก:
+    <ul>
+      <li>ชุดไม้กวาด + ที่โกยมีดาม</li>
+      <li>ที่โกยแบบมีดาม</li>
+      <li>ชุดแปรง + ที่โกยเล็ก</li>
+      <li>แปรงอื่นๆ</li>
+      <li>ไม้กวาด</li>
+    </ul>
+    เรียงสี: เริ่มจากสีที่มีสต็อกเยอะ<br>
+    เรียงเป็น "บาน" บน-ล่าง <strong>ไม่เรียงแนวยาวด้านล่างอย่างเดียว</strong><br>
+    ใช้บาร์ + ฮุกเพื่อเรียงหลายชั้น` },
+
+  { id:12, cat:'household', tags:['ฟองน้ำ','sponge','น้ำยาล้างจาน','cross merchandising'],
+    q:'ฟองน้ำกับน้ำยาล้างจานต้องจัดคู่กันไหม?',
+    a:`<strong>ใช่ — Cross Merchandising</strong><br><br>
+    ย้ายน้ำยาล้างจานมาจัดคู่กับฟองน้ำที่ <strong>ทางเข้าแผนกฟองน้ำ</strong><br><br>
+    ข้อยกเว้น: ถ้า FMCG อยู่บ้านเดียวกับฟองน้ำอยู่แล้ว → ไม่ต้องปรับ<br><br>
+    จัดกลุ่มน้ำยาล้างจานตาม: <strong>แพ็กเกจ (ถุง, ขวด) → ยี่ห้อ</strong>` },
+
+  // ── Furnishing ──
+  { id:13, cat:'furnishing', tags:['รองเท้า','sandals','shoes','จัดรองเท้า','indoor','outdoor'],
+    q:'จัดวางรองเท้าและรองเท้าแตะอย่างไร?',
+    a:`ลำดับการจัดแสดง (Function → Material → Type → Sex → Color → Size):<br><br>
+    <strong>1. Function:</strong> Indoor ก่อน → Outdoor<br>
+    <strong>2. Material:</strong> Fabric → Foam → Faux Leather<br>
+    <strong>3. Type:</strong> Normal → Fancy → Crocs → Slide → Flip-Flops → Leather sandal<br>
+    <strong>4. Sex:</strong> Unisex → Women → Men<br>
+    <strong>5. Color:</strong> สีอ่อน → สีเข้ม → Warm zone → Cool tone<br>
+    <strong>6. Size:</strong> ใหญ่ (บน/หลัง) → เล็ก (ล่าง/หน้า)<br><br>
+    <div class="note">💡 กรณีสต็อกน้อย รวมกลุ่มได้ แต่ยังต้องเรียงตามลำดับเดิม</div>` },
+
+  { id:14, cat:'furnishing', tags:['ผ้าเช็ดตัว','OSILY','towel','ผ้า'],
+    q:'จัดวางผ้าเช็ดตัว OSILY อย่างไร?',
+    a:`แบ่งเป็น 2 ส่วน:<br><br>
+    <strong>1. สินค้าแบบแขวน</strong> (ผ้าเช็ดตัวเด็ก, ชุดคลุมอาบน้ำ):
+    <ul><li>แยก: ประเภท → ขนาด → สี</li></ul>
+    <strong>2. สินค้าแบบกล่อง</strong> (ผ้าเช็ดตัว, ผ้าเช็ดหน้า):
+    <ul>
+      <li>แยก: แบบกล่อง → ประเภท → ขนาด → สี</li>
+      <li>กล่องเหมือนกันให้อยู่ด้วยกัน เรียงแนวตั้ง</li>
+    </ul>
+    <strong>พื้นที่ตาม SKU:</strong> 9 SKU → End Gondola | 10/12/14 SKU → Gondola 4 ฟุต` },
+
+  // ── Electronics ──
+  { id:15, cat:'electronics', tags:['power bank','พาวเวอร์แบงค์','แบตสำรอง','ชาร์จ'],
+    q:'จัดวาง Power Bank อย่างไร? ต้องอยู่ที่ไหน?',
+    a:`<strong>ตำแหน่ง:</strong> End Gondola ใกล้เคาน์เตอร์แคชเชียร์<br>
+    ถ้าไม่มีพื้นที่ → จัด Seasonal Zone<br><br>
+    ลำดับ: <strong>ความจุ → ประเภท → ยี่ห้อ → สี/ดีไซน์</strong><br><br>
+    ลำดับประเภท: USB-A/C → Wireless → Fast Charge<br>
+    ลำดับยี่ห้อ: Veger → Acmic → Mofit → Alphax<br><br>
+    <div class="note">⚠️ ห้ามวางกล่องเปล่าหรือโชว์ชิ้นเดียว</div>` },
+
+  // ── J&C ──
+  { id:16, cat:'jc', tags:['กิ๊บ','hair clip','กิ๊บหนีบ','เครื่องประดับ','jewelry'],
+    q:'จัดวางกิ๊บหนีบผม (Hair Clips) อย่างไร?',
+    a:`ลำดับ: <strong>ประเภทกิ๊บ → แพ็กเกจ → สี → ราคา (แพง→ถูก บนสุด→ล่าง)</strong><br><br>
+    ลำดับประเภท:<br>
+    Snap clip → Bobby pin → Alligator → Claw → Decorative → Bow → Rhinestone → Braided → Flat → Comb` },
+
+  { id:17, cat:'jc', tags:['ยางรัดผม','hair tie','ที่คาดผม','head band','J&C','เครื่องสำอาง'],
+    q:'แผนก J&C มีสินค้าหลักกี่กลุ่ม? มีอะไรบ้าง?',
+    a:`<strong>9 กลุ่มสินค้าหลัก:</strong>
+    <ul>
+      <li>Hair Clips (กิ๊บหนีบผม)</li>
+      <li>Hair Ties (ยางรัดผม)</li>
+      <li>Head Bands (ที่คาดผม)</li>
+      <li>Jewelry (เครื่องประดับ)</li>
+      <li>Glasses (แว่นตา)</li>
+      <li>Combs (หวี)</li>
+      <li>Accessories (อุปกรณ์เสริมสวย)</li>
+      <li>Spray & Pump Bottle</li>
+      <li>Mirror (กระจก)</li>
+    </ul>
+    <strong>การจัดพื้นที่:</strong>
+    <ul>
+      <li>พื้นที่มาก → แยกกลุ่มเป็นบ้านๆ</li>
+      <li>พื้นที่น้อย → รวมหลายกลุ่มในบ้านเดียว แต่ห้ามปะปนกัน แบ่งจากบนลงล่าง</li>
+    </ul>` },
+
+  // ── Display ──
+  { id:18, cat:'display', tags:['กรรไกร','scissors','stationary','ห้องน้ำ','beauty','kitchen'],
+    q:'กรรไกรต้องจัดไว้ที่แผนกไหน? แยกอย่างไร?',
+    a:`<strong>กรรไกรแบ่งเป็น 3 กลุ่ม จัดคนละที่:</strong>
+    <ul>
+      <li><strong>Normal Scissors</strong> (CODE DEPT 906, 908) → แผนก Stationary</li>
+      <li><strong>Kitchen Scissors</strong> (CODE DEPT 906) → แผนก Kitchen</li>
+      <li><strong>Beauty Scissors</strong> (CODE DEPT 905) → แผนก Jewelry & Cosmetic</li>
+    </ul>
+    <div class="note">💡 ถ้าพื้นที่จำกัดรวมไว้ด้วยกัน → เรียงตาม: Multipurpose → Beauty → Kitchen</div>` },
+
+  { id:19, cat:'display', tags:['end gondola','gondola','ปลายแถว','ทางเข้า','โชว์'],
+    q:'End Gondola ควรใช้วางสินค้าอะไร?',
+    a:`<strong>End Gondola (ปลายแถวชั้นวาง)</strong> — สินค้าที่ควรจัดที่นี่:
+    <ul>
+      <li>EMTOP Power Tools → End Gondola <strong>ทางเข้าหลัก</strong></li>
+      <li>สีสเปรย์ → End Gondola แผนกเครื่องมือช่าง</li>
+      <li>Power Bank → End Gondola ใกล้แคชเชียร์</li>
+      <li>ผ้าเช็ดตัว OSILY 9 SKU → End Gondola</li>
+      <li>ฟองน้ำ + น้ำยาล้างจาน → ทางเข้าแผนกฟองน้ำ</li>
+    </ul>
+    <div class="note">💡 End Gondola คือพื้นที่มองเห็นดีที่สุด ใช้วางสินค้า Key Item / โปรโมชั่น</div>` },
+
+  { id:20, cat:'sop', tags:['ห้ามวาง','กล่องเปล่า','โชว์','ชิ้นเดียว','ข้อห้าม'],
+    q:'มีข้อห้ามอะไรบ้างในการจัดแสดงสินค้า?',
+    a:`<strong>ข้อห้ามสำคัญ:</strong>
+    <ul>
+      <li>❌ ห้ามวางกล่องเปล่าเพื่อให้ดูเต็มชั้น</li>
+      <li>❌ ห้ามโชว์สินค้าเพียง 1 ชิ้น (ยกเว้นสินค้าตัวโชว์ที่มีระบบป้องกัน)</li>
+      <li>❌ ห้ามวางสินค้าอันตรายโดยไม่มีป้ายเตือน</li>
+      <li>❌ ห้ามปะปนประเภทสินค้าในพื้นที่เดียวกันโดยไม่มีการแบ่งชัดเจน</li>
+      <li>❌ ห้ามติดป้ายราคาด้านขวา (ต้องเป็นซ้ายเสมอ)</li>
+    </ul>` },
+];
+
+let currentFilter = 'all';
+let currentQuery = '';
+
+function doSearch() {
+  currentQuery = document.getElementById('searchBox').value.toLowerCase().trim();
+  document.getElementById('clearBtn').style.display = currentQuery ? 'block' : 'none';
+  render();
+}
+
+function clearSearch() {
+  document.getElementById('searchBox').value = '';
+  currentQuery = '';
+  document.getElementById('clearBtn').style.display = 'none';
+  render();
+  document.getElementById('searchBox').focus();
+}
+
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+function highlight(text, query) {
+  if (!query) return text;
+  const re = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+  return text.replace(re, '<span class="highlight">$1</span>');
+}
+
+function matches(item) {
+  if (currentFilter !== 'all' && item.cat !== currentFilter) return false;
+  if (!currentQuery) return true;
+  const q = currentQuery;
+  if (item.q.toLowerCase().includes(q)) return true;
+  if (item.a.toLowerCase().includes(q)) return true;
+  if (item.tags.some(t => t.toLowerCase().includes(q))) return true;
+  return false;
+}
+
+const CAT_LABEL = {
+  sop: { label:'SOP ทั่วไป', color:'#1565C0', bg:'#e3f2fd' },
+  hardware: { label:'Hardware', color:'#6d4c41', bg:'#efebe9' },
+  household: { label:'Household', color:'#2e7d32', bg:'#e8f5e9' },
+  furnishing: { label:'Furnishing', color:'#6a1b9a', bg:'#f3e5f5' },
+  electronics: { label:'Electronics', color:'#00838f', bg:'#e0f7fa' },
+  jc: { label:'J&C', color:'#c62828', bg:'#ffebee' },
+  display: { label:'Display', color:'#e65100', bg:'#fff3e0' },
+};
+
+function render() {
+  const filtered = QA.filter(matches);
+  const list = document.getElementById('qaList');
+  const count = document.getElementById('resultCount');
+
+  if (!filtered.length) {
+    const suggestions = ['ป้ายราคา','Power Tools','รองเท้า','กรรไกร','ไม้กวาด'];
+    list.innerHTML = `<div class="no-result">
+      <div class="no-result-icon">🤔</div>
+      <div class="no-result-text">ไม่พบคำตอบสำหรับ "${currentQuery}"</div>
+      <div class="no-result-sub">ลองค้นหาด้วยคำอื่น หรือเลือกหมวดหมู่ด้านบน</div>
+      <div class="suggest-wrap">${suggestions.map(s=>`<button class="suggest-btn" onclick="document.getElementById('searchBox').value='${s}';doSearch();">${s}</button>`).join('')}</div>
+    </div>`;
+    count.textContent = '';
+    return;
+  }
+
+  count.textContent = `พบ ${filtered.length} คำตอบ${currentQuery ? ` สำหรับ "${currentQuery}"` : ''}`;
+
+  list.innerHTML = filtered.map(item => {
+    const cat = CAT_LABEL[item.cat] || { label: item.cat, color: '#666', bg: '#f5f5f5' };
+    const qText = currentQuery ? highlight(item.q, currentQuery) : item.q;
+    return `<div class="qa-item" onclick="toggleQA(${item.id})">
+      <div class="qa-q">
+        <span class="qa-tag" style="color:${cat.color};background:${cat.bg};">${cat.label}</span>
+        <span class="qa-q-text">${qText}</span>
+        <span class="qa-arrow">▼</span>
+      </div>
+      <div class="qa-a">
+        <div class="qa-a-inner">${item.a}</div>
+        <div class="qa-img-section" id="img-section-${item.id}">${buildImgSection(item.id)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleQA(id) {
+  const el = document.querySelector(`[onclick="toggleQA(${id})"]`);
+  el.classList.toggle('open');
+}
+
+// ── Image Storage: ImgBB (ไฟล์รูป) + Firebase Realtime Database (ลิงก์ + sync ทุกคน) ──
+let firebaseReady = false;
+let imgbbReady = false;
+let fbDb;
+let sopImages = {}; // { qaId: { pushKey: { url, name } } }
+
+function initFirebase() {
+  imgbbReady = (typeof imgbbConfig !== 'undefined' && imgbbConfig.apiKey && imgbbConfig.apiKey !== 'YOUR_IMGBB_API_KEY');
+
+  try {
+    if (typeof firebaseConfig === 'undefined' || firebaseConfig.apiKey === 'YOUR_API_KEY') {
+      showFirebaseStatus('notConfigured');
+      loadLocalFallback();
+      return;
+    }
+    firebase.initializeApp(firebaseConfig);
+    fbDb = firebase.database();
+    firebaseReady = true;
+    showFirebaseStatus(imgbbReady ? 'connected' : 'needImgbb');
+
+    // Real-time listener — ทุกคนได้รับอัปเดตพร้อมกัน
+    fbDb.ref('sop_images').on('value', snap => {
+      sopImages = snap.val() || {};
+      QA.forEach(item => {
+        const sec = document.getElementById('img-section-' + item.id);
+        if (sec) sec.innerHTML = buildImgSection(item.id);
+      });
+    }, () => {
+      showFirebaseStatus('error');
+      loadLocalFallback();
+    });
+  } catch(e) {
+    showFirebaseStatus('error');
+    loadLocalFallback();
+  }
+}
+
+function showFirebaseStatus(state) {
+  const bar = document.getElementById('fbStatusBar');
+  if (!bar) return;
+  const map = {
+    connected:     { bg:'#e8f5e9', color:'#2e7d32', icon:'☁️', text:'เชื่อมต่อแล้ว — รูปที่อัปโหลดทุกคนจะเห็นพร้อมกัน' },
+    needImgbb:     { bg:'#fff8e1', color:'#f57f17', icon:'⚙️', text:'ยังไม่ได้ตั้งค่า ImgBB — รูปเห็นเฉพาะเครื่องนี้ (ดูวิธีตั้งค่าใน imgbb-config.js)' },
+    notConfigured: { bg:'#fff8e1', color:'#f57f17', icon:'⚙️', text:'ยังไม่ได้ตั้งค่า Firebase — รูปเห็นเฉพาะเครื่องนี้ (ดูวิธีตั้งค่าใน firebase-config.js)' },
+    error:         { bg:'#fff8e1', color:'#f57f17', icon:'⚠️', text:'เชื่อมต่อไม่ได้ — รูปเห็นเฉพาะเครื่องนี้ชั่วคราว' },
+  };
+  const s = map[state] || map.error;
+  bar.style.cssText = `background:${s.bg};color:${s.color};font-size:12px;padding:8px 16px;text-align:center;`;
+  bar.textContent = s.icon + ' ' + s.text;
+  bar.style.display = 'block';
+}
+
+function loadLocalFallback() {
+  QA.forEach(item => {
+    const stored = JSON.parse(localStorage.getItem('sop_img_' + item.id) || '[]');
+    if (stored.length) {
+      sopImages[item.id] = {};
+      stored.forEach((img, i) => { sopImages[item.id]['local_' + i] = img; });
+    }
+  });
+}
+
+function buildImgSection(id) {
+  const imgs = sopImages[id] || {};
+  const entries = Object.entries(imgs);
+  const thumbs = entries.map(([key, img]) => {
+    const safeSrc = (img.url || img.src || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const safeKey = key.replace(/'/g,"\\'");
+    return `<div class="qa-img-thumb">
+      <img src="${img.url || img.src}" title="${img.name || ''}" onclick="openLightbox('${safeSrc}')">
+      <button class="qa-img-del" onclick="event.stopPropagation();deleteImage(${id},'${safeKey}','${safeSrc}')">✕</button>
+    </div>`;
+  }).join('');
+
+  return `
+    ${thumbs ? `<div class="qa-img-grid">${thumbs}</div>` : ''}
+    <label class="qa-img-add" id="add-btn-${id}" onclick="event.stopPropagation()">
+      📷 เพิ่มรูปภาพ
+      <input type="file" accept="image/*" multiple style="display:none" onchange="addImage(${id},this)">
+    </label>`;
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]); // strip data:...;base64,
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadToImgbb(file) {
+  const base64 = await fileToBase64(file);
+  const form = new FormData();
+  form.append('image', base64);
+  const res = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbConfig.apiKey}`, {
+    method: 'POST', body: form
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error?.message || 'อัปโหลดไป ImgBB ไม่สำเร็จ');
+  return data.data.url;
+}
+
+async function addImage(id, input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  const btn = document.getElementById('add-btn-' + id);
+  if (btn) btn.textContent = '⏳ กำลังอัปโหลด...';
+
+  if (!firebaseReady || !imgbbReady) {
+    // LocalStorage fallback (เห็นเฉพาะเครื่องนี้)
+    const stored = JSON.parse(localStorage.getItem('sop_img_' + id) || '[]');
+    let loaded = 0;
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        stored.push({ url: e.target.result, name: file.name });
+        loaded++;
+        if (loaded === files.length) {
+          localStorage.setItem('sop_img_' + id, JSON.stringify(stored));
+          sopImages[id] = {};
+          stored.forEach((img, i) => { sopImages[id]['local_' + i] = img; });
+          refreshImgSection(id);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  } else {
+    // ImgBB (เก็บไฟล์) + Firebase Realtime DB (เก็บลิงก์ — ทุกคนเห็น)
+    try {
+      for (const file of files) {
+        const url = await uploadToImgbb(file);
+        await fbDb.ref(`sop_images/${id}`).push({ url, name: file.name });
+      }
+    } catch(e) {
+      alert('อัปโหลดไม่สำเร็จ: ' + e.message);
+      if (btn) btn.textContent = '📷 เพิ่มรูปภาพ';
+    }
+  }
+  input.value = '';
+}
+
+async function deleteImage(id, key, url) {
+  if (!confirm('ลบรูปนี้ออกไหม? ทุกคนจะไม่เห็นรูปนี้อีกต่อไป')) return;
+  if (!firebaseReady || !imgbbReady) {
+    let stored = JSON.parse(localStorage.getItem('sop_img_' + id) || '[]');
+    stored = stored.filter(img => (img.url || img.src) !== url);
+    localStorage.setItem('sop_img_' + id, JSON.stringify(stored));
+    sopImages[id] = {};
+    stored.forEach((img, i) => { sopImages[id]['local_' + i] = img; });
+    refreshImgSection(id);
+    return;
+  }
+  // ลบลิงก์ออกจาก Firebase (ไฟล์ที่ ImgBB จะยังอยู่ แต่ไม่แสดงผลแล้ว)
+  await fbDb.ref(`sop_images/${id}/${key}`).remove();
+}
+
+function refreshImgSection(id) {
+  const sec = document.getElementById('img-section-' + id);
+  if (sec) sec.innerHTML = buildImgSection(id);
+}
+
+function openLightbox(src) {
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightbox').classList.add('show');
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('show');
+  document.getElementById('lightboxImg').src = '';
+}
+
+initFirebase();
+render();
+</script>
+</body>
+</html>

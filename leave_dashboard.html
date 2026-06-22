@@ -1,0 +1,630 @@
+﻿<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MR.D.I.Y. Leave Dashboard — June 2026</title>
+<script src="lib/chart.umd.min.js"></script>
+<script src="lib/papaparse.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f3ef; color: #1a1a1a; min-height: 100vh; }
+.topbar { background: #1565C0; color: white; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
+.topbar-title { font-size: 16px; font-weight: 600; }
+.topbar-sub { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+.container { max-width: 1140px; margin: 0 auto; padding: 20px; }
+.page-title { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+.page-sub { font-size: 13px; color: #666; margin-bottom: 18px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+.metric-card { background: white; border-radius: 10px; padding: 14px 16px; border: 1px solid #e8e8e8; }
+.metric-label { font-size: 11px; color: #999; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.04em; }
+.metric-value { font-size: 26px; font-weight: 600; }
+.metric-sub { font-size: 12px; color: #aaa; margin-top: 3px; }
+.card { background: white; border-radius: 10px; padding: 16px 18px; border: 1px solid #e8e8e8; margin-bottom: 16px; }
+.section-title { font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+.alert-box { background: #fff3e0; border: 1px solid #ffb74d; border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; }
+.alert-box.red { background: #ffebee; border-color: #ef9a9a; }
+.alert-title { font-size: 13px; font-weight: 600; color: #e65100; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.alert-title.red { color: #c62828; }
+.alert-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #ffe0b2; font-size: 13px; }
+.alert-row.red { border-bottom-color: #ffcdd2; }
+.alert-row:last-child { border-bottom: none; }
+.tab-row { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 2px solid #eee; flex-wrap: wrap; }
+.tab { padding: 8px 18px; font-size: 13px; cursor: pointer; color: #888; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; white-space: nowrap; }
+.tab.active { color: #1565C0; border-bottom-color: #1565C0; font-weight: 600; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 8px 10px; font-size: 11px; font-weight: 600; color: #999; border-bottom: 1px solid #eee; background: #fafafa; }
+td { padding: 9px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #fafafa; }
+.badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.badge-mc { background: #ffebee; color: #c62828; }
+.badge-al { background: #e3f2fd; color: #1565C0; }
+.badge-pl { background: #e8f5e9; color: #2e7d32; }
+.badge-upl { background: #fff8e1; color: #f57f17; }
+.badge-alert { background: #ffebee; color: #c62828; }
+.badge-warn { background: #fff3e0; color: #e65100; }
+.badge-ok { background: #e8f5e9; color: #2e7d32; }
+.chart-wrap { position: relative; width: 100%; height: 220px; }
+.branch-dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+.mc-count { display: inline-block; min-width: 24px; text-align: center; padding: 2px 6px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+.mc-3 { background: #ffebee; color: #c62828; }
+.mc-2 { background: #fff3e0; color: #e65100; }
+.mc-1 { background: #f5f5f5; color: #777; }
+.footer { text-align: center; font-size: 11px; color: #bbb; margin-top: 24px; padding-bottom: 20px; }
+@media (max-width: 700px) { .grid-4,.grid-3 { grid-template-columns: repeat(2,1fr); } .grid-2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:14px;">
+    <a href="index.html" style="display:inline-flex;align-items:center;gap:6px;color:white;text-decoration:none;background:rgba(255,255,255,0.18);border-radius:7px;padding:6px 12px;font-size:13px;font-weight:600;">← หน้าหลัก</a>
+    <div>
+      <div class="topbar-title">MR.D.I.Y. Leave Dashboard</div>
+      <div class="topbar-sub">ระบบติดตามการลา · น้องเช็ค</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div id="uploadStatus" style="font-size:12px;color:#ffe082;display:none;"></div>
+    <label style="display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border:1.5px solid rgba(255,255,255,0.5);border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;color:white;white-space:nowrap;">
+      📂 อัปโหลด CSV
+      <input type="file" id="leaveFile" accept=".csv" style="display:none" onchange="handleLeaveUpload(this)">
+    </label>
+  </div>
+</div>
+
+<div class="container">
+  <div class="page-title">สรุปการลา — มิถุนายน 2026</div>
+  <div class="page-sub">ข้อมูลจาก Daily Leave Report · 8 สาขา · วันที่ 1–15 มิ.ย.</div>
+
+  <!-- Summary Cards -->
+  <div class="grid-4">
+    <div class="metric-card">
+      <div class="metric-label">รายการลาทั้งหมด</div>
+      <div class="metric-value">30</div>
+      <div class="metric-sub">เดือนมิ.ย. 2026</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">ลาป่วย (MC)</div>
+      <div class="metric-value" style="color:#c62828;">17</div>
+      <div class="metric-sub">11.5 วัน · ต้องติดตาม</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">แจ้งเตือน MC ≥3 ครั้ง</div>
+      <div class="metric-value" style="color:#c62828;">1 คน</div>
+      <div class="metric-sub">Imron Jehteh · PMKP</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">สาขาที่มีการลามากสุด</div>
+      <div class="metric-value" style="color:#1565C0;font-size:20px;">PMKP</div>
+      <div class="metric-sub">17 รายการ</div>
+    </div>
+  </div>
+
+  <!-- MC Alert -->
+  <div class="alert-box red">
+    <div class="alert-title red">⚠️ แจ้งเตือน — ลาป่วยเกินเกณฑ์ (≥3 ครั้ง/เดือน)</div>
+    <div class="alert-row red">
+      <span><strong>Imron Jehteh</strong> · PMKP</span>
+      <span style="display:flex;align-items:center;gap:8px;">
+        <span class="mc-count mc-3">3 ครั้ง</span>
+        <span style="font-size:12px;color:#999;">4 วัน</span>
+        <span class="badge badge-alert">เกินเกณฑ์ · ควร Action</span>
+      </span>
+    </div>
+  </div>
+
+  <!-- Near-alert Warning -->
+  <div class="alert-box">
+    <div class="alert-title">⚡ ใกล้เกณฑ์ — ลาป่วย 2 ครั้ง (เฝ้าระวัง)</div>
+    <div class="alert-row">
+      <span><strong>Nur-afifah Wohday</strong> · PMKP</span>
+      <span style="display:flex;align-items:center;gap:8px;"><span class="mc-count mc-2">2 ครั้ง</span><span style="font-size:12px;color:#999;">1.5 วัน</span><span class="badge badge-warn">เฝ้าระวัง</span></span>
+    </div>
+    <div class="alert-row">
+      <span><strong>Arman Monsmainiyom</strong> · PMKP</span>
+      <span style="display:flex;align-items:center;gap:8px;"><span class="mc-count mc-2">2 ครั้ง</span><span style="font-size:12px;color:#999;">1.5 วัน</span><span class="badge badge-warn">เฝ้าระวัง</span></span>
+    </div>
+    <div class="alert-row">
+      <span><strong>Sulaiman Tayeh</strong> · PNCP</span>
+      <span style="display:flex;align-items:center;gap:8px;"><span class="mc-count mc-2">2 ครั้ง</span><span style="font-size:12px;color:#999;">2 วัน</span><span class="badge badge-warn">เฝ้าระวัง</span></span>
+    </div>
+    <div class="alert-row">
+      <span><strong>Nurnawa Colo</strong> · PMKP</span>
+      <span style="display:flex;align-items:center;gap:8px;"><span class="mc-count mc-2">2 ครั้ง</span><span style="font-size:12px;color:#999;">2 วัน</span><span class="badge badge-warn">เฝ้าระวัง</span></span>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tab-row">
+    <div class="tab active" onclick="showTab('overview')">ภาพรวมสาขา</div>
+    <div class="tab" onclick="showTab('mc')">🔴 ลาป่วย (MC)</div>
+    <div class="tab" onclick="showTab('trend')">📈 แนวโน้ม MC</div>
+    <div class="tab" onclick="showTab('other')">ลากิจ / พักร้อน</div>
+    <div class="tab" onclick="showTab('all')">รายการทั้งหมด</div>
+  </div>
+
+  <!-- TAB 1: Overview -->
+  <div id="tab-overview" class="tab-content active">
+    <div class="grid-2">
+      <div class="card">
+        <div class="section-title">การลาแยกประเภท รายสาขา</div>
+        <div class="chart-wrap"><canvas id="stackedChart" role="img" aria-label="การลาแยกประเภทรายสาขา มิถุนายน 2026">การลาแยกประเภทรายสาขา</canvas></div>
+      </div>
+      <div class="card">
+        <div class="section-title">สัดส่วนประเภทการลา</div>
+        <div class="chart-wrap"><canvas id="pieChart" role="img" aria-label="สัดส่วนประเภทการลา">สัดส่วนการลา</canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title">สรุปรายสาขา</div>
+      <table>
+        <thead>
+          <tr>
+            <th>สาขา</th>
+            <th style="text-align:center;">ลาป่วย (MC)</th>
+            <th style="text-align:center;">ลากิจได้รับ (PL)</th>
+            <th style="text-align:center;">ลากิจไม่ได้รับ (UPL)</th>
+            <th style="text-align:center;">ลาพักร้อน (AL)</th>
+            <th style="text-align:center;">รวม</th>
+            <th>สถานะ</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="branch-dot" style="background:#cc0000;"></span><strong>PMKP</strong></td>
+            <td style="text-align:center;"><span class="mc-count mc-3">12</span></td>
+            <td style="text-align:center;">1</td>
+            <td style="text-align:center;">2</td>
+            <td style="text-align:center;">2</td>
+            <td style="text-align:center;font-weight:600;">17</td>
+            <td><span class="badge badge-alert">ต้องติดตาม</span></td>
+          </tr>
+          <tr>
+            <td><span class="branch-dot" style="background:#6a1b9a;"></span><strong>PNEP</strong></td>
+            <td style="text-align:center;"><span class="mc-count mc-2">3</span></td>
+            <td style="text-align:center;">1</td>
+            <td style="text-align:center;">0</td>
+            <td style="text-align:center;">2</td>
+            <td style="text-align:center;font-weight:600;">6</td>
+            <td><span class="badge badge-warn">เฝ้าระวัง</span></td>
+          </tr>
+          <tr>
+            <td><span class="branch-dot" style="background:#2e7d32;"></span><strong>PPRP</strong></td>
+            <td style="text-align:center;"><span class="mc-count mc-1">0</span></td>
+            <td style="text-align:center;">0</td>
+            <td style="text-align:center;">0</td>
+            <td style="text-align:center;">4</td>
+            <td style="text-align:center;font-weight:600;">4</td>
+            <td><span class="badge badge-ok">ปกติ</span></td>
+          </tr>
+          <tr>
+            <td><span class="branch-dot" style="background:#1565C0;"></span><strong>PKOP</strong></td>
+            <td style="text-align:center;"><span class="mc-count mc-1">0</span></td>
+            <td style="text-align:center;">0</td>
+            <td style="text-align:center;">0</td>
+            <td style="text-align:center;">1</td>
+            <td style="text-align:center;font-weight:600;">1</td>
+            <td><span class="badge badge-ok">ปกติ</span></td>
+          </tr>
+          <tr>
+            <td><span class="branch-dot" style="background:#4e342e;"></span><strong>PNCP</strong></td>
+            <td style="text-align:center;"><span class="mc-count mc-2">2</span></td>
+            <td style="text-align:center;">0</td>
+            <td style="text-align:center;">0</td>
+            <td style="text-align:center;">0</td>
+            <td style="text-align:center;font-weight:600;">2</td>
+            <td><span class="badge badge-warn">เฝ้าระวัง</span></td>
+          </tr>
+          <tr>
+            <td><span class="branch-dot" style="background:#f57f17;"></span><strong>PSOY</strong></td>
+            <td style="text-align:center;"><span class="mc-count mc-1">0</span></td>
+            <td style="text-align:center;">0</td>
+            <td style="text-align:center;">0</td>
+            <td style="text-align:center;">0</td>
+            <td style="text-align:center;font-weight:600;">0</td>
+            <td><span class="badge badge-ok">ปกติ</span></td>
+          </tr>
+          <tr>
+            <td><span class="branch-dot" style="background:#558b2f;"></span><strong>PBTY</strong></td>
+            <td style="text-align:center;"><span class="mc-count mc-1">0</span></td>
+            <td style="text-align:center;">0</td>
+            <td style="text-align:center;">0</td>
+            <td style="text-align:center;">0</td>
+            <td style="text-align:center;font-weight:600;">0</td>
+            <td><span class="badge badge-ok">ปกติ</span></td>
+          </tr>
+          <tr>
+            <td><span class="branch-dot" style="background:#00838f;"></span><strong>PPAP</strong></td>
+            <td style="text-align:center;"><span class="mc-count mc-1">0</span></td>
+            <td style="text-align:center;">0</td>
+            <td style="text-align:center;">0</td>
+            <td style="text-align:center;">0</td>
+            <td style="text-align:center;font-weight:600;">0</td>
+            <td><span class="badge badge-ok">ปกติ</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 2: MC Only -->
+  <div id="tab-mc" class="tab-content">
+    <div class="card">
+      <div class="section-title">รายการลาป่วย (MC) — มิถุนายน 2026</div>
+      <table>
+        <thead>
+          <tr>
+            <th>วันที่เริ่มลา</th>
+            <th>สาขา</th>
+            <th>ชื่อพนักงาน</th>
+            <th style="text-align:center;">จำนวนวัน</th>
+            <th>สาเหตุ</th>
+            <th style="text-align:center;">ครั้งสะสม/เดือน</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="background:#fff5f5;">
+            <td>08/06/2026</td><td><strong>PMKP</strong></td><td><strong style="color:#c62828;">Imron Jehteh</strong></td><td style="text-align:center;">1</td><td>-</td><td style="text-align:center;"><span class="mc-count mc-3">3 ⚠️</span></td>
+          </tr>
+          <tr style="background:#fff5f5;">
+            <td>09/06/2026</td><td><strong>PMKP</strong></td><td><strong style="color:#c62828;">Imron Jehteh</strong></td><td style="text-align:center;">1</td><td>-</td><td style="text-align:center;"><span class="mc-count mc-3">3 ⚠️</span></td>
+          </tr>
+          <tr style="background:#fff5f5;">
+            <td>12/06/2026</td><td><strong>PMKP</strong></td><td><strong style="color:#c62828;">Imron Jehteh</strong></td><td style="text-align:center;">2</td><td>-</td><td style="text-align:center;"><span class="mc-count mc-3">3 ⚠️</span></td>
+          </tr>
+          <tr><td>04/06/2026</td><td>PMKP</td><td>Nasree Chemaeng</td><td style="text-align:center;">1</td><td>-</td><td style="text-align:center;"><span class="mc-count mc-1">1</span></td></tr>
+          <tr><td>04/06/2026</td><td>PMKP</td><td>Arman Monsmainiyom</td><td style="text-align:center;">0.5</td><td>-</td><td style="text-align:center;"><span class="mc-count mc-2">2</span></td></tr>
+          <tr><td>05/06/2026</td><td>PMKP</td><td>Anan Sengthong</td><td style="text-align:center;">0.5</td><td>-</td><td style="text-align:center;"><span class="mc-count mc-1">1</span></td></tr>
+          <tr><td>06/06/2026</td><td>PMKP</td><td>Ropiah Mama</td><td style="text-align:center;">1</td><td>-</td><td style="text-align:center;"><span class="mc-count mc-1">1</span></td></tr>
+          <tr><td>06/06/2026</td><td>PMKP</td><td>Nur-afifah Wohday</td><td style="text-align:center;">1</td><td>-</td><td style="text-align:center;"><span class="mc-count mc-2">2</span></td></tr>
+          <tr><td>07/06/2026</td><td>PMKP</td><td>Arman Monsmainiyom</td><td style="text-align:center;">1</td><td>-</td><td style="text-align:center;"><span class="mc-count mc-2">2</span></td></tr>
+          <tr><td>09/06/2026</td><td>PMKP</td><td>Nurnawa Colo</td><td style="text-align:center;">1</td><td>-</td><td style="text-align:center;"><span class="mc-count mc-2">2</span></td></tr>
+          <tr><td>13/06/2026</td><td>PMKP</td><td>Nur-afifah Wohday</td><td style="text-align:center;">0.5</td><td>-</td><td style="text-align:center;"><span class="mc-count mc-2">2</span></td></tr>
+          <tr><td>15/06/2026</td><td>PMKP</td><td>Nurnawa Colo</td><td style="text-align:center;">1</td><td>-</td><td style="text-align:center;"><span class="mc-count mc-2">2</span></td></tr>
+          <tr><td>09/06/2026</td><td>PNCP</td><td>Sulaiman Tayeh</td><td style="text-align:center;">1</td><td>-</td><td style="text-align:center;"><span class="mc-count mc-2">2</span></td></tr>
+          <tr><td>14/06/2026</td><td>PNCP</td><td>Sulaiman Tayeh</td><td style="text-align:center;">1</td><td>-</td><td style="text-align:center;"><span class="mc-count mc-2">2</span></td></tr>
+          <tr><td>12/06/2026</td><td>PNEP</td><td>Arina Yaena</td><td style="text-align:center;">1</td><td>-</td><td style="text-align:center;"><span class="mc-count mc-1">1</span></td></tr>
+          <tr><td>12/06/2026</td><td>PNEP</td><td>Mohamadsori Benyakat</td><td style="text-align:center;">1</td><td>-</td><td style="text-align:center;"><span class="mc-count mc-1">1</span></td></tr>
+          <tr><td>13/06/2026</td><td>PNEP</td><td>Suwaibah Daoh</td><td style="text-align:center;">1</td><td>-</td><td style="text-align:center;"><span class="mc-count mc-1">1</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB: MC Trend -->
+  <div id="tab-trend" class="tab-content">
+    <div class="card">
+      <div class="section-title">แนวโน้มการลาป่วยรายบุคคล — วิเคราะห์รูปแบบ</div>
+      <div id="trendContent"></div>
+    </div>
+    <div class="card" style="margin-top:14px;">
+      <div class="section-title">สรุปรูปแบบที่น่าสังเกต</div>
+      <div id="trendPatterns"></div>
+    </div>
+  </div>
+
+  <!-- TAB 3: Other Leave -->
+  <div id="tab-other" class="tab-content">
+    <div class="card">
+      <div class="section-title">ลากิจ / ลาพักร้อน — มิถุนายน 2026</div>
+      <table>
+        <thead>
+          <tr>
+            <th>วันที่เริ่มลา</th>
+            <th>สาขา</th>
+            <th>ชื่อพนักงาน</th>
+            <th>ประเภท</th>
+            <th style="text-align:center;">จำนวนวัน</th>
+            <th>สาเหตุ</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>07/06/2026</td><td>PMKP</td><td>Imron Jehteh</td><td><span class="badge badge-al">AL พักร้อน</span></td><td style="text-align:center;">0.5</td><td>-</td></tr>
+          <tr><td>08/06/2026</td><td>PMKP</td><td>Rokiyao Dolo</td><td><span class="badge badge-al">AL พักร้อน</span></td><td style="text-align:center;">0.5</td><td>-</td></tr>
+          <tr><td>23/06/2026</td><td>PMKP</td><td>Rokiyao Dolo</td><td><span class="badge badge-al">AL พักร้อน</span></td><td style="text-align:center;">1</td><td>-</td></tr>
+          <tr><td>11/06/2026</td><td>PMKP</td><td>Nasree Chemaeng</td><td><span class="badge badge-upl">UPL ลากิจ(ไม่รับ)</span></td><td style="text-align:center;">1</td><td>-</td></tr>
+          <tr><td>14/06/2026</td><td>PMKP</td><td>Nurnawa Colo</td><td><span class="badge badge-upl">UPL ลากิจ(ไม่รับ)</span></td><td style="text-align:center;">0.5</td><td>-</td></tr>
+          <tr><td>02/06/2026</td><td>PPRP</td><td>Pateemah Cheloh</td><td><span class="badge badge-al">AL พักร้อน</span></td><td style="text-align:center;">0.5</td><td>-</td></tr>
+          <tr><td>02/06/2026</td><td>PPRP</td><td>Pateemah Cheloh</td><td><span class="badge badge-al">AL พักร้อน</span></td><td style="text-align:center;">0.5</td><td>-</td></tr>
+          <tr><td>07/06/2026</td><td>PPRP</td><td>Nor-haseela Thoh</td><td><span class="badge badge-al">AL พักร้อน</span></td><td style="text-align:center;">1</td><td>-</td></tr>
+          <tr><td>14/06/2026</td><td>PPRP</td><td>Hameesah Samoh</td><td><span class="badge badge-al">AL พักร้อน</span></td><td style="text-align:center;">1</td><td>-</td></tr>
+          <tr><td>13/06/2026</td><td>PKOP</td><td>Supiyan Yama</td><td><span class="badge badge-al">AL พักร้อน</span></td><td style="text-align:center;">0.5</td><td>-</td></tr>
+          <tr><td>01/06/2026</td><td>PNEP</td><td>Muhamad Faisol A-yae</td><td><span class="badge badge-al">AL พักร้อน</span></td><td style="text-align:center;">2</td><td>-</td></tr>
+          <tr><td>13/06/2026</td><td>PNEP</td><td>Mohamadsori Benyakat</td><td><span class="badge badge-al">AL พักร้อน</span></td><td style="text-align:center;">2</td><td>-</td></tr>
+          <tr><td>11/06/2026</td><td>PNEP</td><td>Asree Yusoh</td><td><span class="badge badge-pl">PL ลากิจ(รับ)</span></td><td style="text-align:center;">0.5</td><td>-</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 4: All -->
+  <div id="tab-all" class="tab-content">
+    <div class="card">
+      <div class="section-title">รายการลาทั้งหมด — มิถุนายน 2026 (30 รายการ)</div>
+      <table id="allTable">
+        <thead>
+          <tr>
+            <th>วันที่เริ่มลา</th>
+            <th>สาขา</th>
+            <th>ชื่อพนักงาน</th>
+            <th>ประเภท</th>
+            <th style="text-align:center;">วัน</th>
+            <th>สาเหตุ</th>
+          </tr>
+        </thead>
+        <tbody id="allBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="footer">MR.D.I.Y. Branch Manager System · น้องเลย์ Multi-Agent · Leave Report มิ.ย. 2026</div>
+
+<script>
+const allLeave = [
+  {date:'01/06/2026',store:'PNEP',name:'Muhamad Faisol A-yae',type:'ลาพักร้อน (AL)',days:2,reason:'-'},
+  {date:'02/06/2026',store:'PPRP',name:'Pateemah Cheloh',type:'ลาพักร้อน (AL)',days:0.5,reason:'-'},
+  {date:'02/06/2026',store:'PPRP',name:'Pateemah Cheloh',type:'ลาพักร้อน (AL)',days:0.5,reason:'-'},
+  {date:'04/06/2026',store:'PMKP',name:'Nasree Chemaeng',type:'ลาป่วย (MC)',days:1,reason:'-'},
+  {date:'04/06/2026',store:'PMKP',name:'Arman Monsmainiyom',type:'ลาป่วย (MC)',days:0.5,reason:'-'},
+  {date:'05/06/2026',store:'PMKP',name:'Anan Sengthong',type:'ลาป่วย (MC)',days:0.5,reason:'-'},
+  {date:'06/06/2026',store:'PMKP',name:'Ropiah Mama',type:'ลาป่วย (MC)',days:1,reason:'-'},
+  {date:'06/06/2026',store:'PMKP',name:'Nur-afifah Wohday',type:'ลาป่วย (MC)',days:1,reason:'-'},
+  {date:'07/06/2026',store:'PMKP',name:'Imron Jehteh',type:'ลาพักร้อน (AL)',days:0.5,reason:'-'},
+  {date:'07/06/2026',store:'PMKP',name:'Arman Monsmainiyom',type:'ลาป่วย (MC)',days:1,reason:'-'},
+  {date:'07/06/2026',store:'PPRP',name:'Nor-haseela Thoh',type:'ลาพักร้อน (AL)',days:1,reason:'-'},
+  {date:'08/06/2026',store:'PMKP',name:'Imron Jehteh',type:'ลาป่วย (MC)',days:1,reason:'-'},
+  {date:'08/06/2026',store:'PMKP',name:'Rokiyao Dolo',type:'ลาพักร้อน (AL)',days:0.5,reason:'-'},
+  {date:'09/06/2026',store:'PNCP',name:'Sulaiman Tayeh',type:'ลาป่วย (MC)',days:1,reason:'-'},
+  {date:'09/06/2026',store:'PMKP',name:'Imron Jehteh',type:'ลาป่วย (MC)',days:1,reason:'-'},
+  {date:'09/06/2026',store:'PMKP',name:'Nurnawa Colo',type:'ลาป่วย (MC)',days:1,reason:'-'},
+  {date:'11/06/2026',store:'PMKP',name:'Nasree Chemaeng',type:'ลากิจไม่ได้รับค่าจ้าง (UPL)',days:1,reason:'-'},
+  {date:'11/06/2026',store:'PNEP',name:'Asree Yusoh',type:'ลากิจได้รับค่าจ้าง (PL)',days:0.5,reason:'-'},
+  {date:'12/06/2026',store:'PMKP',name:'Imron Jehteh',type:'ลาป่วย (MC)',days:2,reason:'-'},
+  {date:'12/06/2026',store:'PNEP',name:'Arina Yaena',type:'ลาป่วย (MC)',days:1,reason:'-'},
+  {date:'12/06/2026',store:'PNEP',name:'Mohamadsori Benyakat',type:'ลาป่วย (MC)',days:1,reason:'-'},
+  {date:'13/06/2026',store:'PNEP',name:'Suwaibah Daoh',type:'ลาป่วย (MC)',days:1,reason:'-'},
+  {date:'13/06/2026',store:'PNEP',name:'Mohamadsori Benyakat',type:'ลาพักร้อน (AL)',days:2,reason:'-'},
+  {date:'13/06/2026',store:'PKOP',name:'Supiyan Yama',type:'ลาพักร้อน (AL)',days:0.5,reason:'-'},
+  {date:'13/06/2026',store:'PMKP',name:'Nur-afifah Wohday',type:'ลาป่วย (MC)',days:0.5,reason:'-'},
+  {date:'14/06/2026',store:'PPRP',name:'Hameesah Samoh',type:'ลาพักร้อน (AL)',days:1,reason:'-'},
+  {date:'14/06/2026',store:'PNCP',name:'Sulaiman Tayeh',type:'ลาป่วย (MC)',days:1,reason:'-'},
+  {date:'14/06/2026',store:'PMKP',name:'Nurnawa Colo',type:'ลากิจไม่ได้รับค่าจ้าง (UPL)',days:0.5,reason:'-'},
+  {date:'15/06/2026',store:'PMKP',name:'Nurnawa Colo',type:'ลาป่วย (MC)',days:1,reason:'-'},
+  {date:'23/06/2026',store:'PMKP',name:'Rokiyao Dolo',type:'ลาพักร้อน (AL)',days:1,reason:'-'},
+];
+
+function typeBadge(t) {
+  if (t.includes('ป่วย')) return '<span class="badge badge-mc">MC ลาป่วย</span>';
+  if (t.includes('ได้รับค่าจ้าง') && !t.includes('ไม่')) return '<span class="badge badge-pl">PL ลากิจ(รับ)</span>';
+  if (t.includes('ไม่ได้รับ')) return '<span class="badge badge-upl">UPL ลากิจ(ไม่รับ)</span>';
+  if (t.includes('พักร้อน')) return '<span class="badge badge-al">AL พักร้อน</span>';
+  return t;
+}
+
+// All table
+const tbody = document.getElementById('allBody');
+const sorted = [...allLeave].sort((a,b) => {
+  const da = a.date.split('/').reverse().join('');
+  const db = b.date.split('/').reverse().join('');
+  return da.localeCompare(db);
+});
+sorted.forEach(r => {
+  tbody.innerHTML += `<tr>
+    <td>${r.date}</td>
+    <td><strong>${r.store}</strong></td>
+    <td>${r.name}</td>
+    <td>${typeBadge(r.type)}</td>
+    <td style="text-align:center;">${r.days}</td>
+    <td style="color:#999;">${r.reason}</td>
+  </tr>`;
+});
+
+// Stacked bar chart
+const branches = ['PMKP','PKOP','PPRP','PSOY','PNCP','PPAP','PBTY','PNEP'];
+const mcData  = [12,0,0,0,2,0,0,3];
+const plData  = [1,0,0,0,0,0,0,1];
+const uplData = [2,0,0,0,0,0,0,0];
+const alData  = [2,1,4,0,0,0,0,2];
+
+new Chart(document.getElementById('stackedChart'), {
+  type: 'bar',
+  data: {
+    labels: branches,
+    datasets: [
+      { label: 'MC ลาป่วย', data: mcData, backgroundColor: '#ef9a9a', borderRadius: 2 },
+      { label: 'PL ลากิจ(รับ)', data: plData, backgroundColor: '#a5d6a7', borderRadius: 2 },
+      { label: 'UPL ลากิจ(ไม่รับ)', data: uplData, backgroundColor: '#ffe082', borderRadius: 2 },
+      { label: 'AL พักร้อน', data: alData, backgroundColor: '#90caf9', borderRadius: 2 },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position:'top', labels:{ font:{size:11}, boxWidth:12, padding:10 } } },
+    scales: {
+      x: { stacked: true, ticks:{ font:{size:11}, autoSkip:false } },
+      y: { stacked: true, ticks:{ font:{size:10} }, grid:{color:'#f0f0f0'} }
+    }
+  }
+});
+
+// Pie chart
+new Chart(document.getElementById('pieChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['MC ลาป่วย (17)', 'AL พักร้อน (9)', 'UPL ลากิจ(ไม่รับ) (2)', 'PL ลากิจ(รับ) (2)'],
+    datasets: [{ data:[17,9,2,2], backgroundColor:['#ef9a9a','#90caf9','#ffe082','#a5d6a7'], borderWidth:2, borderColor:'#fff' }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position:'right', labels:{ font:{size:11}, padding:10, boxWidth:12 } } }
+  }
+});
+
+const DAY_TH = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
+const DAY_FULL = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+
+function renderTrend() {
+  const mcOnly = allLeave.filter(r => r.type.includes('ป่วย'));
+  // Group by person
+  const byPerson = {};
+  mcOnly.forEach(r => {
+    if (!byPerson[r.name]) byPerson[r.name] = { store: r.store, records: [] };
+    const parts = r.date.split('/').map(Number);
+    const d = new Date(parts[2], parts[1]-1, parts[0]);
+    byPerson[r.name].records.push({ date: r.date, dow: d.getDay(), day: parts[0], days: r.days });
+  });
+
+  // Sort by count desc
+  const sorted = Object.entries(byPerson).sort((a,b) => b[1].records.length - a[1].records.length);
+
+  const content = document.getElementById('trendContent');
+  content.innerHTML = sorted.map(([name, info]) => {
+    const count = info.records.length;
+    const totalDays = info.records.reduce((s,r)=>s+r.days,0);
+    const dowCounts = Array(7).fill(0);
+    info.records.forEach(r => dowCounts[r.dow]++);
+    const maxDow = dowCounts.indexOf(Math.max(...dowCounts));
+    const dayNums = info.records.map(r => r.day);
+    const avgDay = Math.round(dayNums.reduce((s,n)=>s+n,0)/dayNums.length);
+    const isEarlyMonth = avgDay <= 10;
+    const isLateMonth = avgDay >= 20;
+    const alwaysSameDay = dowCounts[maxDow] === count && count >= 2;
+
+    const alertClass = count >= 3 ? 'mc-3' : count === 2 ? 'mc-2' : 'mc-1';
+    const badges = [];
+    if (alwaysSameDay) badges.push(`<span style="background:#fff3e0;color:#e65100;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">ลาวัน${DAY_FULL[maxDow]}ทุกครั้ง</span>`);
+    if (isEarlyMonth && count >= 2) badges.push(`<span style="background:#e3f2fd;color:#1565C0;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">มักลาต้นเดือน</span>`);
+    if (isLateMonth && count >= 2) badges.push(`<span style="background:#f3e5f5;color:#6a1b9a;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">มักลาปลายเดือน</span>`);
+
+    const dotBar = DAY_TH.map((d,i) => {
+      const c = dowCounts[i];
+      const col = c>=2?'#ef9a9a':c===1?'#ffb74d':'#e0e0e0';
+      return `<span title="${DAY_FULL[i]}: ${c} ครั้ง" style="display:inline-flex;flex-direction:column;align-items:center;gap:3px;margin-right:6px;">
+        <span style="width:22px;height:22px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:${c?'#c62828':'#bbb'}">${c||''}</span>
+        <span style="font-size:9px;color:#aaa;">${d}</span>
+      </span>`;
+    }).join('');
+
+    return `<div style="padding:12px 0;border-bottom:1px solid #f0f0f0;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <div>
+          <span style="font-weight:600;font-size:13px;">${name}</span>
+          <span style="font-size:12px;color:#999;margin-left:8px;">${info.store}</span>
+          ${badges.length ? '<div style="margin-top:5px;display:flex;gap:6px;flex-wrap:wrap;">'+badges.join('')+'</div>' : ''}
+          <div style="margin-top:8px;">${dotBar}</div>
+          <div style="font-size:11px;color:#aaa;margin-top:6px;">วันที่ลา: ${info.records.map(r=>r.date.split('/')[0]+' มิ.ย.').join(' · ')}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <span class="mc-count ${alertClass}">${count} ครั้ง</span>
+          <div style="font-size:11px;color:#aaa;margin-top:4px;">${totalDays} วัน</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Pattern summary
+  const patterns = document.getElementById('trendPatterns');
+  const riskItems = sorted.filter(([,info]) => info.records.length >= 2);
+  if (!riskItems.length) {
+    patterns.innerHTML = '<div style="color:#aaa;font-size:13px;text-align:center;padding:16px;">ยังไม่พบรูปแบบที่น่าสังเกต</div>';
+    return;
+  }
+  patterns.innerHTML = riskItems.map(([name, info]) => {
+    const dowCounts = Array(7).fill(0);
+    info.records.forEach(r => dowCounts[r.dow]++);
+    const maxDow = dowCounts.indexOf(Math.max(...dowCounts));
+    const alwaysSameDay = dowCounts[maxDow] === info.records.length;
+    const dayNums = info.records.map(r=>r.day);
+    const avgDay = Math.round(dayNums.reduce((s,n)=>s+n,0)/dayNums.length);
+    let obs = [];
+    if (alwaysSameDay) obs.push(`ลาวัน${DAY_FULL[maxDow]}ทุกครั้ง (${info.records.length} ครั้ง) — อาจเป็นรูปแบบที่ต้องติดตาม`);
+    if (avgDay <= 10) obs.push('ลาช่วงต้นเดือนเป็นประจำ');
+    if (avgDay >= 20) obs.push('ลาช่วงปลายเดือนเป็นประจำ');
+    if (!obs.length) obs.push('ลาหลายครั้งในเดือนเดียว — ควรสอบถามเหตุผล');
+    return `<div style="padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:13px;">
+      <strong>${name}</strong> <span style="color:#999;font-size:12px;">(${info.store})</span>
+      <div style="color:#e65100;font-size:12px;margin-top:4px;">⚡ ${obs.join(' · ')}</div>
+    </div>`;
+  }).join('');
+}
+
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelector(`[onclick="showTab('${name}')"]`).classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  if (name === 'trend') renderTrend();
+}
+
+function handleLeaveUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('uploadStatus');
+  statusEl.style.display = 'none';
+
+  Papa.parse(file, {
+    header: true, skipEmptyLines: true,
+    complete(res) {
+      try {
+        const norm = r => { const o={}; for(const k of Object.keys(r)) o[k.replace(/^﻿/,'').trim()]=r[k]; return o; };
+        const rows = res.data.map(norm);
+        if (!rows.length) throw new Error('ไฟล์ว่างเปล่า');
+
+        const parseD = s => {
+          if (!s) return null;
+          const p = String(s).trim().split('/');
+          if (p.length===3) {
+            const [a,b,c] = p.map(Number);
+            return a>31 ? new Date(a,b-1,c) : new Date(c,b-1,a);
+          }
+          return null;
+        };
+
+        const months = new Set();
+        const parsed = rows.map(r => {
+          const sd = parseD(r['วันที่เริ่มลา'] || r['startDate'] || r['วันที่']);
+          if (sd) months.add(`${sd.getFullYear()}-${String(sd.getMonth()+1).padStart(2,'0')}`);
+          return { ...r, _date: sd };
+        }).filter(r => r._date);
+
+        const latest = [...months].sort().reverse()[0];
+        const [ly, lm] = latest ? latest.split('-').map(Number) : [0,0];
+        const filtered = parsed.filter(r => r._date && r._date.getFullYear()===ly && r._date.getMonth()+1===lm);
+
+        const leaveTypeKey = Object.keys(rows[0]).find(k => k.includes('ประเภท'));
+        const branchKey = Object.keys(rows[0]).find(k => k.includes('สาขา') || k === 'store');
+        const daysKey = Object.keys(rows[0]).find(k => k.includes('จำนวนวัน') || k.includes('days'));
+
+        const mcRows = filtered.filter(r => {
+          const lt = r[leaveTypeKey]||'';
+          return lt.includes('ป่วย');
+        });
+
+        const thaiM = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+        statusEl.textContent = `✅ โหลดสำเร็จ — ${thaiM[lm]} ${ly} · ${filtered.length} รายการ`;
+        statusEl.style.display = 'block';
+        document.querySelector('.page-title') && (document.querySelector('.page-title').textContent = `สรุปการลา — ${thaiM[lm]} ${ly}`);
+
+      } catch(e) {
+        statusEl.textContent = '❌ ' + e.message;
+        statusEl.style.display = 'block';
+      }
+    },
+    error(e) {
+      const statusEl = document.getElementById('uploadStatus');
+      statusEl.textContent = '❌ อ่านไฟล์ไม่ได้: ' + e.message;
+      statusEl.style.display = 'block';
+    }
+  });
+}
+</script>
+</body>
+</html>
+

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>วิธีตั้งค่า Firebase — MR.D.I.Y. System</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f3ef; color: #1a1a1a; }
+.topbar { background: #cc0000; color: white; padding: 14px 28px; display: flex; align-items: center; gap: 14px; }
+.topbar-title { font-size: 17px; font-weight: 700; }
+.topbar-sub { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+.container { max-width: 780px; margin: 0 auto; padding: 28px 20px; }
+.step-card { background: white; border-radius: 12px; border: 1px solid #e8e8e8; padding: 22px 24px; margin-bottom: 18px; }
+.step-header { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+.step-num { width: 34px; height: 34px; background: #cc0000; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; flex-shrink: 0; }
+.step-title { font-size: 16px; font-weight: 700; }
+.step-sub { font-size: 12px; color: #999; margin-top: 2px; }
+.step-body { font-size: 13px; line-height: 1.8; color: #333; }
+.step-body ol, .step-body ul { margin: 8px 0 8px 20px; }
+.step-body li { margin-bottom: 6px; }
+.step-body strong { color: #cc0000; }
+.code-box { background: #1e1e1e; color: #d4d4d4; border-radius: 8px; padding: 14px 16px; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.7; margin: 12px 0; overflow-x: auto; position: relative; }
+.code-box .key { color: #9cdcfe; }
+.code-box .val { color: #ce9178; }
+.code-box .comment { color: #6a9955; }
+.copy-btn { position: absolute; top: 10px; right: 10px; background: #333; color: #ccc; border: none; border-radius: 5px; padding: 4px 10px; font-size: 11px; cursor: pointer; }
+.copy-btn:hover { background: #555; }
+.img-step { background: #f8f8f8; border: 1px dashed #ddd; border-radius: 8px; padding: 14px; text-align: center; color: #aaa; font-size: 13px; margin: 10px 0; }
+.rule-box { background: #fff3e0; border-left: 4px solid #ff9800; border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 12px 0; font-size: 13px; color: #e65100; }
+.done-box { background: #e8f5e9; border-left: 4px solid #4caf50; border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 12px 0; font-size: 13px; color: #2e7d32; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+.tag-free { background: #e8f5e9; color: #2e7d32; }
+.tag-req { background: #e3f2fd; color: #1565C0; }
+.footer { text-align: center; font-size: 11px; color: #bbb; padding: 20px; }
+a { color: #1565C0; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="topbar-title">วิธีตั้งค่า Firebase สำหรับ SOP Image Sharing</div>
+    <div class="topbar-sub">ทำครั้งเดียว · ใช้ได้ตลอด · ฟรี</div>
+  </div>
+</div>
+
+<div class="container">
+
+  <div style="background:white;border-radius:12px;border:1px solid #e8e8e8;padding:16px 20px;margin-bottom:20px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+    <div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px;">สิ่งที่ต้องมี</div>
+      <div style="font-size:13px;color:#555;">
+        <span class="tag tag-req" style="margin-right:6px;">Google Account</span>
+        <span class="tag tag-free" style="margin-right:6px;">ฟรี 100%</span>
+        <span style="color:#aaa;font-size:12px;">ไม่ต้องใส่บัตรเครดิต</span>
+      </div>
+    </div>
+    <div style="margin-left:auto;font-size:13px;color:#999;">ใช้เวลาประมาณ 10 นาที</div>
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num">1</div>
+      <div>
+        <div class="step-title">สร้าง Firebase Project</div>
+        <div class="step-sub">ไปที่ console.firebase.google.com</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <ol>
+        <li>เปิด <a href="https://console.firebase.google.com" target="_blank"><strong>console.firebase.google.com</strong></a> → Login ด้วย Google</li>
+        <li>คลิก <strong>"Add project"</strong> หรือ <strong>"Create a project"</strong></li>
+        <li>ตั้งชื่อ Project เช่น <strong>mrdiy-agent</strong></li>
+        <li>Google Analytics → ปิดได้ (Toggle off) → คลิก <strong>"Create project"</strong></li>
+        <li>รอสักครู่ → คลิก <strong>"Continue"</strong></li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num">2</div>
+      <div>
+        <div class="step-title">เปิดใช้ Realtime Database</div>
+        <div class="step-sub">สำหรับเก็บข้อมูลว่ารูปไหนอยู่หัวข้อไหน</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <ol>
+        <li>เมนูซ้าย → <strong>Build → Realtime Database</strong></li>
+        <li>คลิก <strong>"Create Database"</strong></li>
+        <li>เลือก Location: <strong>Singapore (asia-southeast1)</strong></li>
+        <li>Security rules → เลือก <strong>"Start in test mode"</strong> → คลิก Enable</li>
+      </ol>
+      <div class="rule-box">
+        ⚠️ Test mode หมดอายุใน 30 วัน — ต้องแก้ Rules ให้ถาวรในขั้นตอนที่ 4
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num">3</div>
+      <div>
+        <div class="step-title">สมัคร ImgBB (เก็บไฟล์รูปจริง)</div>
+        <div class="step-sub">ฟรี ไม่ต้องผูกบัตรเครดิต — ใช้แทน Firebase Storage</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <div class="rule-box" style="background:#e3f2fd;border-left-color:#1565C0;color:#1565C0;">
+        ℹ️ Firebase Storage ปัจจุบันต้องผูกบัตรเครดิต (Blaze Plan) จึงใช้ <strong>ImgBB</strong> เก็บไฟล์รูปแทน — ฟรี 100% ไม่ต้องบัตร
+      </div>
+      <ol>
+        <li>เปิด <a href="https://api.imgbb.com" target="_blank"><strong>api.imgbb.com</strong></a></li>
+        <li>คลิก <strong>"Get API Key"</strong> → Login ด้วย Email หรือ Google</li>
+        <li>คัดลอก API Key ที่ได้ (ตัวอักษร+เลขยาวๆ)</li>
+        <li>เปิดไฟล์ <strong>imgbb-config.js</strong> ใน D:\Agent → วาง Key แทนค่าเดิม</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- STEP 4 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num">4</div>
+      <div>
+        <div class="step-title">ตั้ง Rules ให้ใช้งานได้ถาวร</div>
+        <div class="step-sub">ทำทั้ง Realtime Database และ Storage</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <strong>Realtime Database Rules:</strong><br>
+      เมนูซ้าย → Realtime Database → แท็บ <strong>Rules</strong> → แก้เป็น:
+      <div class="code-box">
+        <span class="comment">// Realtime Database Rules</span><br>
+        {<br>
+        &nbsp;&nbsp;<span class="key">"rules"</span>: {<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">".read"</span>: <span class="val">true</span>,<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">".write"</span>: <span class="val">true</span><br>
+        &nbsp;&nbsp;}<br>
+        }
+      </div>
+      คลิก <strong>Publish</strong>
+    </div>
+  </div>
+
+  <!-- STEP 5 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num">5</div>
+      <div>
+        <div class="step-title">คัดลอก Config มาใส่ไฟล์</div>
+        <div class="step-sub">แก้ไขไฟล์ firebase-config.js</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <ol>
+        <li>Firebase Console → คลิก ⚙️ (Project Settings) ด้านบนซ้าย</li>
+        <li>เลื่อนลงมาที่ <strong>"Your apps"</strong> → คลิก <strong>&lt;/&gt; (Web)</strong></li>
+        <li>ตั้งชื่อ App เช่น <strong>mrdiy-web</strong> → คลิก Register app</li>
+        <li>จะเห็น <strong>firebaseConfig</strong> → คัดลอกทั้งหมด</li>
+        <li>เปิดไฟล์ <strong>firebase-config.js</strong> ใน D:\Agent → วางแทนค่าเดิม</li>
+      </ol>
+      <div style="margin-top:12px;font-size:12px;color:#999;">ตัวอย่าง firebase-config.js ที่ถูกต้อง:</div>
+      <div class="code-box">
+        <span class="key">const</span> firebaseConfig = {<br>
+        &nbsp;&nbsp;<span class="key">apiKey</span>: <span class="val">"AIzaSyB-xxxxxxxxxxxxxxxxxxxxxxxxx"</span>,<br>
+        &nbsp;&nbsp;<span class="key">authDomain</span>: <span class="val">"mrdiy-agent.firebaseapp.com"</span>,<br>
+        &nbsp;&nbsp;<span class="key">databaseURL</span>: <span class="val">"https://mrdiy-agent-default-rtdb.asia-southeast1.firebasedatabase.app"</span>,<br>
+        &nbsp;&nbsp;<span class="key">projectId</span>: <span class="val">"mrdiy-agent"</span>,<br>
+        &nbsp;&nbsp;<span class="key">storageBucket</span>: <span class="val">"mrdiy-agent.appspot.com"</span>,<br>
+        &nbsp;&nbsp;<span class="key">messagingSenderId</span>: <span class="val">"123456789012"</span>,<br>
+        &nbsp;&nbsp;<span class="key">appId</span>: <span class="val">"1:123456789012:web:xxxxxxxxxxxxxxxx"</span><br>
+        };
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 6 -->
+  <div class="step-card">
+    <div class="step-header">
+      <div class="step-num">6</div>
+      <div>
+        <div class="step-title">อัปโหลดไฟล์ทั้งหมดขึ้น GitHub</div>
+        <div class="step-sub">หลังใส่ Config เรียบร้อยแล้ว</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <ol>
+        <li>Login <a href="https://github.com" target="_blank"><strong>github.com</strong></a> → คลิก <strong>New repository</strong></li>
+        <li>ชื่อ: <strong>mrdiy-agent</strong> → เลือก <strong>Public</strong> → Create repository</li>
+        <li>คลิก <strong>"uploading an existing file"</strong></li>
+        <li>ลากทั้งโฟลเดอร์ <strong>D:\Agent</strong> ขึ้นไป (รวม lib/, firebase-config.js, imgbb-config.js)</li>
+        <li>คลิก <strong>"Commit changes"</strong></li>
+        <li>ไปที่ Settings → Pages → Source: <strong>Deploy from branch</strong> → main → / (root) → Save</li>
+        <li>รอ 2-3 นาที → ได้ลิงก์ เช่น <strong>https://imron-s.github.io/mrdiy-agent</strong></li>
+      </ol>
+      <div class="done-box">
+        ✅ เสร็จแล้ว! แชร์ลิงก์ให้ทีมได้เลย — รูปที่อัปโหลดในหน้า SOP ทุกคนจะเห็นพร้อมกัน
+      </div>
+    </div>
+  </div>
+
+  <div style="background:white;border-radius:12px;border:1px solid #e8e8e8;padding:16px 20px;font-size:13px;color:#555;">
+    <strong style="color:#1a1a1a;">Quota ฟรี:</strong>
+    <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div>☁️ ImgBB: <strong>ไม่จำกัด</strong></div>
+      <div>🗄️ Firebase DB: <strong>1 GB</strong></div>
+      <div>📥 Download: <strong>10 GB/เดือน</strong></div>
+      <div>👥 ผู้ใช้: <strong>ไม่จำกัด</strong></div>
+    </div>
+    <div style="margin-top:10px;color:#aaa;font-size:12px;">เพียงพอสำหรับระบบ 8 สาขา ใช้งานได้ตลอดไปโดยไม่ต้องจ่ายเงินหรือผูกบัตรเครดิต</div>
+  </div>
+
+</div>
+
+<div class="footer">MR.D.I.Y. Branch Manager System · Setup Guide · Firebase Free Tier</div>
+</body>
+</html>

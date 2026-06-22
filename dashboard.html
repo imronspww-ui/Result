@@ -1,0 +1,601 @@
+﻿<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MR.D.I.Y. Sales Dashboard — June 2026</title>
+<script src="lib/chart.umd.min.js"></script>
+<script src="lib/papaparse.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f3ef; color: #1a1a1a; min-height: 100vh; }
+  .topbar { background: #cc0000; color: white; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .topbar-title { font-size: 16px; font-weight: 600; }
+  .topbar-sub { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+  .container { max-width: 1140px; margin: 0 auto; padding: 20px; }
+  .header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; flex-wrap: wrap; gap: 10px; }
+  .page-title { font-size: 20px; font-weight: 600; }
+  .page-sub { font-size: 13px; color: #666; margin-top: 3px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+  .metric-card { background: white; border-radius: 10px; padding: 14px 16px; border: 1px solid #e8e8e8; }
+  .metric-label { font-size: 11px; color: #999; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .metric-value { font-size: 24px; font-weight: 600; }
+  .metric-sub { font-size: 12px; color: #aaa; margin-top: 3px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+  .card { background: white; border-radius: 10px; padding: 16px 18px; border: 1px solid #e8e8e8; }
+  .section-title { font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+  .chart-wrap { position: relative; width: 100%; height: 220px; }
+  .chart-wrap-tall { position: relative; width: 100%; height: 280px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px 10px; font-size: 11px; font-weight: 600; color: #999; border-bottom: 1px solid #eee; background: #fafafa; }
+  td { padding: 9px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafafa; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-green { background: #e8f5e9; color: #2e7d32; }
+  .badge-amber { background: #fff8e1; color: #f57f17; }
+  .badge-red { background: #ffebee; color: #c62828; }
+  .bar-bg { background: #f0f0f0; border-radius: 4px; height: 5px; margin-top: 4px; overflow: hidden; width: 80px; }
+  .bar-fill { height: 5px; border-radius: 4px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; font-size: 12px; color: #777; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 4px; vertical-align: middle; }
+  .tab-row { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 2px solid #eee; }
+  .tab { padding: 8px 18px; font-size: 13px; cursor: pointer; color: #888; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+  .tab.active { color: #cc0000; border-bottom-color: #cc0000; font-weight: 600; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .daily-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 1px; font-size: 11px; }
+  .daily-header { background: #fafafa; padding: 6px 4px; text-align: center; font-weight: 600; color: #666; border-bottom: 1px solid #eee; }
+  .daily-cell { padding: 5px 4px; text-align: center; color: #333; }
+  .daily-cell.high { background: #e8f5e9; color: #2e7d32; }
+  .daily-cell.mid { background: #fff8e1; color: #f57f17; }
+  .daily-cell.low { background: #ffebee; color: #c62828; }
+  .footer { text-align: center; font-size: 11px; color: #bbb; margin-top: 24px; padding-bottom: 20px; }
+  @media (max-width: 700px) {
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:14px;">
+    <a href="index.html" style="display:inline-flex;align-items:center;gap:6px;color:white;text-decoration:none;background:rgba(255,255,255,0.18);border-radius:7px;padding:6px 12px;font-size:13px;font-weight:600;">← หน้าหลัก</a>
+    <div>
+      <div class="topbar-title">MR.D.I.Y. Branch Manager Dashboard</div>
+      <div class="topbar-sub">ระบบติดตามยอดขาย · น้องเซลล์</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div id="uploadStatus" style="font-size:12px;color:#ffe082;display:none;"></div>
+    <label style="display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border:1.5px solid rgba(255,255,255,0.5);border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;color:white;white-space:nowrap;">
+      📂 อัปโหลด CSV
+      <input type="file" id="csvFile" accept=".csv" style="display:none" onchange="handleCSVUpload(this)">
+    </label>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="header-row">
+    <div>
+      <div class="page-title" id="pageTitle">ยอดขาย — มิถุนายน 2026</div>
+      <div class="page-sub" id="pageSub">ข้อมูลจริงจาก Daily Sales Report · 8 สาขา</div>
+    </div>
+  </div>
+  <div id="uploadError" style="display:none;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;"></div>
+
+  <div class="grid-4">
+    <div class="metric-card">
+      <div class="metric-label">ยอดขายรวม (15 วัน)</div>
+      <div class="metric-value" style="color:#cc0000;">฿8.35M</div>
+      <div class="metric-sub">8 สาขารวมกัน</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">ยอดเฉลี่ยต่อวัน / สาขา</div>
+      <div class="metric-value">฿69.6K</div>
+      <div class="metric-sub">เฉลี่ยทุกสาขา</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">สาขายอดสูงสุด</div>
+      <div class="metric-value" style="font-size:20px;color:#2e7d32;">PMKP</div>
+      <div class="metric-sub">฿1.86M (15 วัน)</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">สาขายอดต่ำสุด</div>
+      <div class="metric-value" style="font-size:20px;color:#c62828;">PKOP</div>
+      <div class="metric-sub">฿267K (15 วัน)</div>
+    </div>
+  </div>
+
+  <div class="tab-row">
+    <div class="tab active" onclick="showTab('summary')">ภาพรวมสาขา</div>
+    <div class="tab" onclick="showTab('weekly')">เปรียบเทียบรายสัปดาห์</div>
+    <div class="tab" onclick="showTab('daily')">ยอดขายรายวัน</div>
+    <div class="tab" onclick="showTab('chart')">กราฟรายวัน</div>
+  </div>
+
+  <!-- TAB 1: Summary -->
+  <div id="tab-summary" class="tab-content active">
+    <div class="grid-2">
+      <div class="card">
+        <div class="section-title">ยอดขายรวม 1–15 มิ.ย. รายสาขา</div>
+        <div class="legend">
+          <span><span class="legend-dot" style="background:#cc0000;"></span>ยอดขาย</span>
+          <span><span class="legend-dot" style="background:#ddd;border:1px solid #bbb;"></span>เป้ารายเดือน (÷2)</span>
+        </div>
+        <div class="chart-wrap"><canvas id="barChart" role="img" aria-label="ยอดขาย 1-15 มิ.ย. 2026 รายสาขา">ยอดขายรายสาขา มิถุนายน 2026</canvas></div>
+      </div>
+      <div class="card">
+        <div class="section-title">สัดส่วนยอดขายแต่ละสาขา</div>
+        <div class="chart-wrap"><canvas id="pieChart" role="img" aria-label="สัดส่วนยอดขายรายสาขา">สัดส่วนยอดขาย</canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">รายละเอียดรายสาขา</div>
+      <table>
+        <thead>
+          <tr>
+            <th>สาขา</th>
+            <th style="text-align:right;">ยอดขายรวม<br><span style="font-weight:400;font-size:10px;">(1–15 มิ.ย.)</span></th>
+            <th style="text-align:right;">ยอดเฉลี่ย/วัน</th>
+            <th style="text-align:right;">Transactions</th>
+            <th style="text-align:right;">Basket Size</th>
+            <th style="text-align:right;">เทียบเป้าครึ่งเดือน</th>
+            <th>สถานะ</th>
+          </tr>
+        </thead>
+        <tbody id="branchRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB: Weekly Comparison -->
+  <div id="tab-weekly" class="tab-content">
+    <div class="card">
+      <div class="section-title">เปรียบเทียบยอดขายรายสัปดาห์ — รายสาขา</div>
+      <div id="weeklyTable"></div>
+    </div>
+    <div class="grid-2" style="margin-top:14px;">
+      <div class="card">
+        <div class="section-title">กราฟเปรียบเทียบสัปดาห์</div>
+        <div class="chart-wrap-tall"><canvas id="weeklyChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="section-title">สรุปแนวโน้ม</div>
+        <div id="weeklyTrend"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: Daily Table -->
+  <div id="tab-daily" class="tab-content">
+    <div class="card">
+      <div class="section-title">ยอดขายรายวัน แยกสาขา (บาท)</div>
+      <div style="overflow-x:auto;">
+        <table id="dailyTable" style="min-width:900px;font-size:12px;">
+          <thead id="dailyHead"></thead>
+          <tbody id="dailyBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: Daily Chart -->
+  <div id="tab-chart" class="tab-content">
+    <div class="card">
+      <div class="section-title">กราฟยอดขายรายวัน — 1–15 มิ.ย. 2026</div>
+      <div class="chart-wrap-tall"><canvas id="lineChart" role="img" aria-label="กราฟยอดขายรายวัน 8 สาขา">ยอดขายรายวัน</canvas></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">MR.D.I.Y. Branch Manager System · น้องเลย์ Multi-Agent · Daily Sales Report 1–15 มิ.ย. 2026</div>
+
+<script>
+const branches = ['PMKP','PKOP','PPRP','PSOY','PNCP','PPAP','PBTY','PNEP'];
+const monthTargets = { PMKP:3253056, PKOP:560321, PPRP:1007451, PSOY:2876156, PNCP:1157769, PPAP:922907, PBTY:2617168, PNEP:1572941 };
+
+const rawData = [
+  {date:'01/06',PMKP:130661,PKOP:14942,PPRP:45904,PSOY:151320,PNCP:58510,PPAP:55212,PBTY:108160,PNEP:76982},
+  {date:'02/06',PMKP:100321,PKOP:21542,PPRP:38934,PSOY:116802,PNCP:40847,PPAP:40573,PBTY:116258,PNEP:65892},
+  {date:'03/06',PMKP:133732,PKOP:24028,PPRP:43320,PSOY:134027,PNCP:56123,PPAP:50433,PBTY:125693,PNEP:97185},
+  {date:'04/06',PMKP:118346,PKOP:16859,PPRP:41610,PSOY:106780,PNCP:42975,PPAP:34649,PBTY:113605,PNEP:62442},
+  {date:'05/06',PMKP:118098,PKOP:19781,PPRP:48137,PSOY:104247,PNCP:54142,PPAP:36805,PBTY:102941,PNEP:75632},
+  {date:'06/06',PMKP:139644,PKOP:17855,PPRP:43856,PSOY:146544,PNCP:45830,PPAP:44983,PBTY:109541,PNEP:70518},
+  {date:'07/06',PMKP:148728,PKOP:21855,PPRP:39045,PSOY:160322,PNCP:39270,PPAP:49815,PBTY:106265,PNEP:87030},
+  {date:'08/06',PMKP:109892,PKOP:15992,PPRP:41064,PSOY:121877,PNCP:40227,PPAP:36021,PBTY:114939,PNEP:63987},
+  {date:'09/06',PMKP:101586,PKOP:15099,PPRP:38773,PSOY:107069,PNCP:46248,PPAP:36318,PBTY:100292,PNEP:53277},
+  {date:'10/06',PMKP:110362,PKOP:19887,PPRP:29004,PSOY:120762,PNCP:38442,PPAP:39452,PBTY:108462,PNEP:55522},
+  {date:'11/06',PMKP:143905,PKOP:18558,PPRP:33332,PSOY:121562,PNCP:40638,PPAP:30953,PBTY:99225,PNEP:61013},
+  {date:'12/06',PMKP:112764,PKOP:16904,PPRP:31081,PSOY:106972,PNCP:34647,PPAP:34760,PBTY:68017,PNEP:62383},
+  {date:'13/06',PMKP:166758,PKOP:17861,PPRP:35332,PSOY:131854,PNCP:32510,PPAP:31229,PBTY:87797,PNEP:75813},
+  {date:'14/06',PMKP:119208,PKOP:9973,PPRP:30925,PSOY:133420,PNCP:42573,PPAP:46851,PBTY:82901,PNEP:62690},
+  {date:'15/06',PMKP:106782,PKOP:15832,PPRP:24750,PSOY:91182,PNCP:34505,PPAP:28511,PBTY:89393,PNEP:52580},
+];
+
+const txnData = {PMKP:9258,PKOP:1959,PPRP:4376,PSOY:8740,PNCP:3769,PPAP:3278,PBTY:9062,PNEP:5607};
+
+const totals = {};
+branches.forEach(b => { totals[b] = rawData.reduce((s,d) => s + (d[b]||0), 0); });
+
+function fmtM(n) {
+  if (n >= 1000000) return '฿' + (n/1000000).toFixed(2) + 'M';
+  if (n >= 1000) return '฿' + (n/1000).toFixed(1) + 'K';
+  return '฿' + Math.round(n).toLocaleString();
+}
+
+const branchColors = {
+  PMKP:'#cc0000',PKOP:'#1565C0',PPRP:'#2e7d32',PSOY:'#f57f17',
+  PNCP:'#6a1b9a',PPAP:'#00838f',PBTY:'#558b2f',PNEP:'#4e342e'
+};
+
+// Render branch table
+function renderTable() {
+  const tbody = document.getElementById('branchRows');
+  const sorted = [...branches].sort((a,b) => totals[b]-totals[a]);
+  sorted.forEach(b => {
+    const total = totals[b];
+    const avg = Math.round(total/15);
+    const txn = txnData[b];
+    const basket = txn ? Math.round(total/txn) : 0;
+    const halfTarget = monthTargets[b] / 2;
+    const pct = Math.round((total/halfTarget)*100);
+    const color = pct >= 100 ? '#2e7d32' : pct >= 75 ? '#f57f17' : '#c62828';
+    const badge = pct >= 100
+      ? `<span class="badge badge-green">ถึงเป้า ${pct}%</span>`
+      : pct >= 75
+      ? `<span class="badge badge-amber">ใกล้เป้า ${pct}%</span>`
+      : `<span class="badge badge-red">ต่ำกว่าเป้า ${pct}%</span>`;
+
+    tbody.innerHTML += `<tr>
+      <td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${branchColors[b]};margin-right:6px;vertical-align:middle;"></span><strong>${b}</strong></td>
+      <td style="text-align:right;font-weight:600;">${fmtM(total)}</td>
+      <td style="text-align:right;">${fmtM(avg)}</td>
+      <td style="text-align:right;">${txn.toLocaleString()}</td>
+      <td style="text-align:right;">฿${basket.toLocaleString()}</td>
+      <td style="text-align:right;">
+        <span style="color:${color};font-weight:600;">${pct}%</span>
+        <div class="bar-bg"><div class="bar-fill" style="width:${Math.min(pct,130)}%;background:${color};"></div></div>
+      </td>
+      <td>${badge}</td>
+    </tr>`;
+  });
+}
+
+// Bar chart
+function renderBarChart() {
+  const sorted = [...branches].sort((a,b) => totals[b]-totals[a]);
+  new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels: sorted,
+      datasets: [
+        { label: 'ยอดขาย 15 วัน', data: sorted.map(b=>totals[b]), backgroundColor: sorted.map(b=>branchColors[b]), borderRadius: 4 },
+        { label: 'เป้าครึ่งเดือน', data: sorted.map(b=>monthTargets[b]/2), backgroundColor: 'rgba(0,0,0,0.06)', borderColor:'#ccc', borderWidth:1, borderRadius:4 }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ ticks:{ font:{size:11}, autoSkip:false } },
+        y:{ ticks:{ callback: v => v>=1000000?(v/1000000).toFixed(1)+'M':v>=1000?(v/1000).toFixed(0)+'K':v, font:{size:10} }, grid:{color:'#f0f0f0'} }
+      }
+    }
+  });
+}
+
+// Pie chart
+function renderPieChart() {
+  new Chart(document.getElementById('pieChart'), {
+    type: 'doughnut',
+    data: {
+      labels: branches,
+      datasets: [{ data: branches.map(b=>totals[b]), backgroundColor: branches.map(b=>branchColors[b]), borderWidth: 2, borderColor: '#fff' }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ position:'right', labels:{ font:{size:11}, padding:10,
+          generateLabels: chart => branches.map((b,i) => ({
+            text: b + '  ' + fmtM(totals[b]),
+            fillStyle: branchColors[b], strokeStyle:'#fff', lineWidth:2, index:i
+          }))
+        }}
+      }
+    }
+  });
+}
+
+// Daily table
+function renderDailyTable() {
+  const head = document.getElementById('dailyHead');
+  const body = document.getElementById('dailyBody');
+  head.innerHTML = '<tr><th>วันที่</th>' + branches.map(b=>`<th style="text-align:right;"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${branchColors[b]};margin-right:4px;"></span>${b}</th>`).join('') + '<th style="text-align:right;">รวมทุกสาขา</th></tr>';
+
+  const dayTotals = rawData.map(d => branches.reduce((s,b)=>s+(d[b]||0),0));
+  const maxDay = Math.max(...dayTotals);
+
+  rawData.forEach((d,i) => {
+    const rowTotal = dayTotals[i];
+    const isWeekend = ['06/06','07/06','08/06','13/06','14/06','15/06'].includes(d.date);
+    const cells = branches.map(b => {
+      const v = d[b]||0;
+      const avg = totals[b]/15;
+      const cls = v >= avg*1.1 ? 'high' : v < avg*0.85 ? 'low' : '';
+      return `<td class="daily-cell ${cls}" style="text-align:right;">${(v/1000).toFixed(1)}K</td>`;
+    }).join('');
+    body.innerHTML += `<tr style="${isWeekend?'background:#fafff8;':''}">
+      <td style="font-weight:500;white-space:nowrap;">${d.date}${isWeekend?' <span style="font-size:10px;color:#2e7d32;">Wkd</span>':''}</td>
+      ${cells}
+      <td style="text-align:right;font-weight:600;">${(rowTotal/1000).toFixed(1)}K</td>
+    </tr>`;
+  });
+
+  // Total row
+  const grandTotal = branches.reduce((s,b)=>s+totals[b],0);
+  body.innerHTML += `<tr style="background:#fafafa;font-weight:600;border-top:2px solid #eee;">
+    <td>รวม</td>
+    ${branches.map(b=>`<td style="text-align:right;">${fmtM(totals[b])}</td>`).join('')}
+    <td style="text-align:right;color:#cc0000;">${fmtM(grandTotal)}</td>
+  </tr>`;
+}
+
+// Line chart
+function renderLineChart() {
+  const labels = rawData.map(d=>d.date);
+  const datasets = branches.map(b => ({
+    label: b,
+    data: rawData.map(d=>d[b]||0),
+    borderColor: branchColors[b],
+    backgroundColor: branchColors[b]+'22',
+    borderWidth: 2,
+    pointRadius: 3,
+    tension: 0.3,
+  }));
+  new Chart(document.getElementById('lineChart'), {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'top', labels:{ font:{size:11}, padding:12, boxWidth:12, boxHeight:12 } } },
+      scales:{
+        x:{ ticks:{ font:{size:10}, maxRotation:45, autoSkip:false } },
+        y:{ ticks:{ callback: v => v>=1000?(v/1000).toFixed(0)+'K':v, font:{size:10} }, grid:{color:'#f0f0f0'} }
+      }
+    }
+  });
+}
+
+let weeklyChartInst = null;
+function renderWeekly() {
+  // Split rawData into weeks by date label dd/mm
+  const weeks = { 'สัปดาห์ 1 (1–7)': [], 'สัปดาห์ 2 (8–14)': [], 'สัปดาห์ 3 (15+)': [] };
+  rawData.forEach(d => {
+    const day = parseInt(d.date.split('/')[0]);
+    if (day <= 7) weeks['สัปดาห์ 1 (1–7)'].push(d);
+    else if (day <= 14) weeks['สัปดาห์ 2 (8–14)'].push(d);
+    else weeks['สัปดาห์ 3 (15+)'].push(d);
+  });
+
+  const weekKeys = Object.keys(weeks);
+  const weekTotals = {};
+  branches.forEach(b => {
+    weekTotals[b] = weekKeys.map(wk => weeks[wk].reduce((s,d)=>s+(d[b]||0),0));
+  });
+
+  // Table
+  const tbl = document.getElementById('weeklyTable');
+  const tickColor = v => v > 0 ? (v > 0 ? '#2e7d32' : '#c62828') : '#aaa';
+  tbl.innerHTML = `<table><thead><tr>
+    <th>สาขา</th>
+    ${weekKeys.map(w=>`<th style="text-align:right;">${w}</th>`).join('')}
+    <th style="text-align:right;">W2 vs W1</th>
+    <th style="text-align:right;">W3 vs W2</th>
+    <th>แนวโน้ม</th>
+  </tr></thead><tbody>` +
+  [...branches].sort((a,b)=>totals[b]-totals[a]).map(b => {
+    const [w1,w2,w3] = weekTotals[b];
+    const d1 = w1 ? Math.round((w2-w1)/w1*100) : 0;
+    const d2 = w2 ? Math.round((w3-w2)/w2*100) : 0;
+    const trend = d1>0 && d2>0 ? '📈 ขึ้นต่อเนื่อง' : d1<0 && d2<0 ? '📉 ลงต่อเนื่อง' : d1>0 && d2<0 ? '⚠️ ขึ้นแล้วตก' : d1<0 && d2>0 ? '↗️ กำลังฟื้น' : '➡️ คงที่';
+    return `<tr>
+      <td><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${branchColors[b]};margin-right:6px;vertical-align:middle;"></span><strong>${b}</strong></td>
+      ${[w1,w2,w3].map(v=>`<td style="text-align:right;">${fmtM(v)}</td>`).join('')}
+      <td style="text-align:right;color:${d1>=0?'#2e7d32':'#c62828'};font-weight:600;">${d1>=0?'+':''}${d1}%</td>
+      <td style="text-align:right;color:${d2>=0?'#2e7d32':'#c62828'};font-weight:600;">${d2>=0?'+':''}${d2}%</td>
+      <td style="font-size:12px;">${trend}</td>
+    </tr>`;
+  }).join('') + '</tbody></table>';
+
+  // Chart
+  if (weeklyChartInst) weeklyChartInst.destroy();
+  weeklyChartInst = new Chart(document.getElementById('weeklyChart'), {
+    type: 'bar',
+    data: {
+      labels: branches,
+      datasets: weekKeys.map((wk,i) => ({
+        label: wk,
+        data: branches.map(b => weekTotals[b][i]),
+        backgroundColor: ['#cc000099','#cc000055','#cc000022'][i],
+        borderColor: ['#cc0000','#e57373','#ffcdd2'][i],
+        borderWidth: 1, borderRadius: 3,
+      }))
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'top', labels:{ font:{size:11} } } },
+      scales:{
+        x:{ ticks:{ font:{size:11} } },
+        y:{ ticks:{ callback: v => v>=1000000?(v/1000000).toFixed(1)+'M':v>=1000?(v/1000).toFixed(0)+'K':v, font:{size:10} }, grid:{color:'#f0f0f0'} }
+      }
+    }
+  });
+
+  // Trend summary
+  const trend = document.getElementById('weeklyTrend');
+  const ups = branches.filter(b=>{ const [w1,w2]=weekTotals[b]; return w2>w1; });
+  const downs = branches.filter(b=>{ const [w1,w2]=weekTotals[b]; return w2<w1; });
+  trend.innerHTML = `
+    <div style="margin-bottom:12px;">
+      <div style="font-size:12px;color:#2e7d32;font-weight:600;margin-bottom:6px;">📈 W2 ดีกว่า W1 (${ups.length} สาขา)</div>
+      ${ups.map(b=>{
+        const [w1,w2]=weekTotals[b]; const pct=Math.round((w2-w1)/w1*100);
+        return `<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid #f0f0f0;">
+          <span>${b}</span><span style="color:#2e7d32;font-weight:600;">+${pct}%</span></div>`;
+      }).join('')}
+    </div>
+    <div>
+      <div style="font-size:12px;color:#c62828;font-weight:600;margin-bottom:6px;">📉 W2 แย่กว่า W1 (${downs.length} สาขา)</div>
+      ${downs.map(b=>{
+        const [w1,w2]=weekTotals[b]; const pct=Math.round((w2-w1)/w1*100);
+        return `<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid #f0f0f0;">
+          <span>${b}</span><span style="color:#c62828;font-weight:600;">${pct}%</span></div>`;
+      }).join('')}
+    </div>`;
+}
+
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelector(`[onclick="showTab('${name}')"]`).classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  if (name === 'weekly') renderWeekly();
+}
+
+renderTable();
+renderBarChart();
+renderPieChart();
+renderDailyTable();
+renderLineChart();
+
+// ── CSV Upload Handler ──
+function handleCSVUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('uploadError').style.display = 'none';
+  document.getElementById('uploadStatus').style.display = 'none';
+
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    complete(res) {
+      try {
+        const rows = res.data;
+        if (!rows.length) throw new Error('ไฟล์ว่างเปล่า');
+
+        // Normalise headers (strip BOM)
+        const norm = r => {
+          const out = {};
+          for (const k of Object.keys(r)) out[k.replace(/^﻿/, '').trim()] = r[k];
+          return out;
+        };
+
+        const parseSales = v => parseFloat(String(v||'').replace(/[฿,\s]/g,'')) || 0;
+
+        const months = new Set();
+        const parsed = [];
+
+        for (const raw of rows) {
+          const r = norm(raw);
+          const dateStr = String(r['Date']||'').trim();
+          const branch  = String(r['Branch']||'').trim();
+          const sales   = parseSales(r['Total Sales']);
+          const txn     = parseInt(String(r['จำนวนใบเสร็จทั้งหมด']||'0').replace(/,/g,'')) || 0;
+          const target  = parseSales(r['Sales Target']);
+          if (!dateStr || !branch || !branches.includes(branch)) continue;
+          const parts = dateStr.split('/');
+          if (parts.length !== 3) continue;
+          const [d, m, y] = parts.map(Number);
+          if (isNaN(d)||isNaN(m)||isNaN(y)) continue;
+          months.add(`${String(m).padStart(2,'0')}/${y}`);
+          parsed.push({ d, m, y, branch, sales, txn, target, label: `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}` });
+        }
+
+        if (!parsed.length) throw new Error('ไม่พบข้อมูลสาขาใน CSV นี้ ตรวจสอบ column Branch / Total Sales');
+
+        // Use latest month
+        const latest = [...months].sort().reverse()[0];
+        const [lm, ly] = latest.split('/').map(Number);
+        const filtered = parsed.filter(r => r.m === lm && r.y === ly);
+        const thaiM = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+        // Rebuild rawData
+        const dayMap = {};
+        filtered.forEach(r => {
+          if (!dayMap[r.label]) dayMap[r.label] = { date: r.label };
+          dayMap[r.label][r.branch] = (dayMap[r.label][r.branch]||0) + r.sales;
+        });
+        rawData.length = 0;
+        Object.values(dayMap).sort((a,b) => {
+          const [da,ma] = a.date.split('/').map(Number);
+          const [db,mb] = b.date.split('/').map(Number);
+          return (ma*100+da) - (mb*100+db);
+        }).forEach(d => rawData.push(d));
+
+        // Rebuild txnData & totals & monthTargets
+        branches.forEach(b => { txnData[b] = 0; totals[b] = 0; });
+        filtered.forEach(r => { txnData[r.branch] += r.txn; totals[r.branch] += r.sales; });
+        // Get target from CSV (Sales Target = monthly target)
+        filtered.forEach(r => { if (r.target) monthTargets[r.branch] = r.target; });
+
+        const days = rawData.length;
+        document.getElementById('pageTitle').textContent = `ยอดขาย — ${thaiM[lm]} ${ly}`;
+        document.getElementById('pageSub').textContent = `ข้อมูลจริงจาก ${file.name} · 8 สาขา · ${days} วัน`;
+
+        // Update top metrics
+        const grand = Object.values(totals).reduce((s,v)=>s+v,0);
+        const topB = branches.reduce((a,b)=>totals[b]>totals[a]?b:a);
+        const botB = branches.reduce((a,b)=>totals[b]<totals[a]?b:a);
+
+        // Re-render all
+        ['barChart','pieChart','lineChart'].forEach(id => {
+          const canvas = document.getElementById(id);
+          const existing = Chart.getChart(canvas);
+          if (existing) existing.destroy();
+        });
+        document.getElementById('branchRows').innerHTML = '';
+        document.getElementById('dailyHead').innerHTML = '';
+        document.getElementById('dailyBody').innerHTML = '';
+
+        // Update metric cards
+        const cards = document.querySelectorAll('.metric-card');
+        cards[0].querySelector('.metric-value').textContent = fmtM(grand);
+        cards[0].querySelector('.metric-sub').textContent = `${days} วัน รวมกัน`;
+        cards[1].querySelector('.metric-value').textContent = fmtM(grand/days/branches.length);
+        cards[2].querySelector('.metric-value').textContent = topB;
+        cards[2].querySelector('.metric-sub').textContent = fmtM(totals[topB]);
+        cards[3].querySelector('.metric-value').textContent = botB;
+        cards[3].querySelector('.metric-sub').textContent = fmtM(totals[botB]);
+
+        renderTable();
+        renderBarChart();
+        renderPieChart();
+        renderDailyTable();
+        renderLineChart();
+
+        const statusEl = document.getElementById('uploadStatus');
+        statusEl.textContent = `✅ โหลดสำเร็จ — ${thaiM[lm]} ${ly} · ${filtered.length} รายการ · ${days} วัน`;
+        statusEl.style.display = 'block';
+
+      } catch(e) {
+        const errEl = document.getElementById('uploadError');
+        errEl.textContent = '❌ ' + e.message;
+        errEl.style.display = 'block';
+      }
+    },
+    error(e) {
+      const errEl = document.getElementById('uploadError');
+      errEl.textContent = '❌ อ่านไฟล์ไม่ได้: ' + e.message;
+      errEl.style.display = 'block';
+    }
+  });
+}
+</script>
+</body>
+</html>
+
