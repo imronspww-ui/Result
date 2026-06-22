@@ -534,15 +534,17 @@ function handleCSVUpload(input) {
           if (parts.length !== 3) { skippedDate++; continue; }
           const [d, m, y] = parts.map(Number);
           if (isNaN(d)||isNaN(m)||isNaN(y)) { skippedDate++; continue; }
-          months.add(`${String(m).padStart(2,'0')}/${y}`);
+          months.add(y * 100 + m); // numeric key (YYYYMM) — sorts correctly across year boundaries
           parsed.push({ d, m, y, branch, sales, txn, target, label: `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}` });
         }
 
         if (!parsed.length) throw new Error('ไม่พบข้อมูลสาขาใน CSV นี้ ตรวจสอบ column Branch / Total Sales');
 
-        // Use latest month
-        const latest = [...months].sort().reverse()[0];
-        const [lm, ly] = latest.split('/').map(Number);
+        // Use latest month — prefer the current real-world month if it's present in the file
+        const now = new Date();
+        const currentKey = now.getFullYear() * 100 + (now.getMonth() + 1);
+        const latestKey = months.has(currentKey) ? currentKey : [...months].sort((a,b) => b - a)[0];
+        const ly = Math.floor(latestKey / 100), lm = latestKey % 100;
         const filtered = parsed.filter(r => r.m === lm && r.y === ly);
         const thaiM = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
