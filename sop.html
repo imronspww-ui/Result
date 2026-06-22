@@ -65,6 +65,22 @@ body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f3ef; color: 
 .img-lightbox.show { display: flex; }
 .img-lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 10px; object-fit: contain; }
 .img-lightbox-close { position: absolute; top: 18px; right: 22px; color: white; font-size: 28px; cursor: pointer; line-height: 1; }
+.qa-edit-btn { background: none; border: none; cursor: pointer; font-size: 14px; color: #bbb; padding: 2px 5px; flex-shrink: 0; margin-top: 1px; border-radius: 5px; }
+.qa-edit-btn:hover { color: #cc0000; background: #fff5f5; }
+.edited-badge { font-size: 11px; color: #999; margin-top: 10px; }
+.qa-edit-form { margin-top: 4px; }
+.qa-edit-label { display: block; font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.05em; margin: 10px 0 4px; }
+.qa-edit-input, .qa-edit-textarea { width: 100%; border: 1.5px solid #e0e0e0; border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: inherit; color: #1a1a1a; resize: vertical; box-sizing: border-box; }
+.qa-edit-input:focus, .qa-edit-textarea:focus { outline: none; border-color: #cc0000; }
+.qa-edit-textarea { font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.5; }
+.qa-edit-hint { font-size: 11px; color: #bbb; margin-top: 4px; }
+.qa-edit-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.qa-edit-save { background: #cc0000; color: white; border: none; border-radius: 8px; padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.qa-edit-save:hover { background: #a30000; }
+.qa-edit-cancel { background: #f5f5f5; color: #666; border: none; border-radius: 8px; padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.qa-edit-cancel:hover { background: #eee; }
+.qa-edit-revert { background: none; color: #e65100; border: 1px solid #ffb74d; border-radius: 8px; padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.qa-edit-revert:hover { background: #fff3e0; }
 </style>
 </head>
 <body>
@@ -523,6 +539,8 @@ const QA = [
 
 let currentFilter = 'all';
 let currentQuery = '';
+let sopEdits = {};
+let editingIds = new Set();
 
 function doSearch() {
   currentQuery = document.getElementById('searchBox').value.toLowerCase().trim();
@@ -551,12 +569,16 @@ function highlight(text, query) {
   return text.replace(re, '<span class="highlight">$1</span>');
 }
 
+function getQ(item) { return (sopEdits[item.id] && sopEdits[item.id].q) || item.q; }
+function getA(item) { return (sopEdits[item.id] && sopEdits[item.id].a) || item.a; }
+function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
+
 function matches(item) {
   if (currentFilter !== 'all' && item.cat !== currentFilter) return false;
   if (!currentQuery) return true;
   const q = currentQuery;
-  if (item.q.toLowerCase().includes(q)) return true;
-  if (item.a.toLowerCase().includes(q)) return true;
+  if (getQ(item).toLowerCase().includes(q)) return true;
+  if (getA(item).toLowerCase().includes(q)) return true;
   if (item.tags.some(t => t.toLowerCase().includes(q))) return true;
   return false;
 }
@@ -593,15 +615,17 @@ function render() {
 
   list.innerHTML = filtered.map(item => {
     const cat = CAT_LABEL[item.cat] || { label: item.cat, color: '#666', bg: '#f5f5f5' };
-    const qText = currentQuery ? highlight(item.q, currentQuery) : item.q;
+    const qVal = getQ(item);
+    const qText = currentQuery ? highlight(qVal, currentQuery) : qVal;
     return `<div class="qa-item" onclick="toggleQA(${item.id})">
       <div class="qa-q">
         <span class="qa-tag" style="color:${cat.color};background:${cat.bg};">${cat.label}</span>
-        <span class="qa-q-text">${qText}</span>
+        <span class="qa-q-text" id="qtext-${item.id}">${qText}</span>
+        <button class="qa-edit-btn" onclick="event.stopPropagation();startEdit(${item.id})" title="แก้ไขคำถาม-คำตอบนี้">✏️</button>
         <span class="qa-arrow">▼</span>
       </div>
       <div class="qa-a">
-        <div class="qa-a-inner">${item.a}</div>
+        <div id="ans-body-${item.id}">${buildAnswerView(item)}</div>
         <div class="qa-img-section" id="img-section-${item.id}">${buildImgSection(item.id)}</div>
       </div>
     </div>`;
@@ -611,6 +635,97 @@ function render() {
 function toggleQA(id) {
   const el = document.querySelector(`[onclick="toggleQA(${id})"]`);
   el.classList.toggle('open');
+}
+
+// ── Edit SOP content ──
+function buildAnswerView(item) {
+  const edited = sopEdits[item.id] ? `<div class="edited-badge">✏️ มีการแก้ไขจากต้นฉบับ</div>` : '';
+  return `<div class="qa-a-inner">${getA(item)}</div>${edited}`;
+}
+
+function buildAnswerEdit(item) {
+  const hasOverride = !!sopEdits[item.id];
+  return `<div class="qa-edit-form" onclick="event.stopPropagation()">
+    <label class="qa-edit-label">คำถาม</label>
+    <input type="text" class="qa-edit-input" id="edit-q-${item.id}" value="${escAttr(getQ(item))}">
+    <label class="qa-edit-label">คำตอบ</label>
+    <textarea class="qa-edit-textarea" id="edit-a-${item.id}" rows="8">${getA(item)}</textarea>
+    <div class="qa-edit-hint">ใส่ HTML ได้ เช่น &lt;strong&gt;ตัวหนา&lt;/strong&gt;, &lt;br&gt; ขึ้นบรรทัดใหม่, &lt;ul&gt;&lt;li&gt;...&lt;/li&gt;&lt;/ul&gt; ทำลิสต์</div>
+    <div class="qa-edit-actions">
+      <button class="qa-edit-save" onclick="saveEdit(${item.id})">💾 บันทึก</button>
+      <button class="qa-edit-cancel" onclick="cancelEdit(${item.id})">ยกเลิก</button>
+      ${hasOverride ? `<button class="qa-edit-revert" id="revert-btn-${item.id}" onclick="confirmRevert(${item.id}, this)">↺ คืนค่าเดิม</button>` : ''}
+    </div>
+  </div>`;
+}
+
+function startEdit(id) {
+  const outer = document.querySelector(`[onclick="toggleQA(${id})"]`);
+  if (outer) outer.classList.add('open');
+  editingIds.add(id);
+  const item = QA.find(x => x.id === id);
+  const body = document.getElementById('ans-body-' + id);
+  if (body) body.innerHTML = buildAnswerEdit(item);
+  const ta = document.getElementById('edit-a-' + id);
+  if (ta) ta.focus();
+}
+
+function cancelEdit(id) {
+  editingIds.delete(id);
+  const item = QA.find(x => x.id === id);
+  const body = document.getElementById('ans-body-' + id);
+  if (body) body.innerHTML = buildAnswerView(item);
+}
+
+async function saveEdit(id) {
+  const qVal = document.getElementById('edit-q-' + id).value.trim();
+  const aVal = document.getElementById('edit-a-' + id).value.trim();
+  if (!qVal || !aVal) { alert('กรุณากรอกทั้งคำถามและคำตอบ'); return; }
+
+  if (firebaseReady) {
+    try { await fbDb.ref('sop_edits/' + id).set({ q: qVal, a: aVal, updatedAt: Date.now() }); }
+    catch(e) { alert('บันทึกไม่สำเร็จ: ' + e.message); return; }
+  } else {
+    const all = JSON.parse(localStorage.getItem('sop_edit_all') || '{}');
+    all[id] = { q: qVal, a: aVal };
+    localStorage.setItem('sop_edit_all', JSON.stringify(all));
+    sopEdits = all;
+  }
+
+  editingIds.delete(id);
+  const item = QA.find(x => x.id === id);
+  const body = document.getElementById('ans-body-' + id);
+  if (body) body.innerHTML = buildAnswerView(item);
+  const qSpan = document.getElementById('qtext-' + id);
+  if (qSpan) qSpan.textContent = getQ(item);
+}
+
+function confirmRevert(id, btn) {
+  if (btn.dataset.armed === '1') {
+    revertEdit(id);
+    return;
+  }
+  btn.dataset.armed = '1';
+  btn.textContent = 'คลิกอีกครั้งเพื่อยืนยัน';
+  setTimeout(() => { if (btn.isConnected) { btn.dataset.armed = '0'; btn.textContent = '↺ คืนค่าเดิม'; } }, 3000);
+}
+
+async function revertEdit(id) {
+  if (firebaseReady) {
+    try { await fbDb.ref('sop_edits/' + id).remove(); } catch(e) { /* ignore */ }
+  } else {
+    const all = JSON.parse(localStorage.getItem('sop_edit_all') || '{}');
+    delete all[id];
+    localStorage.setItem('sop_edit_all', JSON.stringify(all));
+    sopEdits = all;
+  }
+
+  editingIds.delete(id);
+  const item = QA.find(x => x.id === id);
+  const body = document.getElementById('ans-body-' + id);
+  if (body) body.innerHTML = buildAnswerView(item);
+  const qSpan = document.getElementById('qtext-' + id);
+  if (qSpan) qSpan.textContent = getQ(item);
 }
 
 // ── Image Storage: ImgBB (ไฟล์รูป) + Firebase Realtime Database (ลิงก์ + sync ทุกคน) ──
@@ -626,6 +741,7 @@ function initFirebase() {
     if (typeof firebaseConfig === 'undefined' || firebaseConfig.apiKey === 'YOUR_API_KEY') {
       showFirebaseStatus('notConfigured');
       loadLocalFallback();
+      loadLocalEditsFallback();
       return;
     }
     firebase.initializeApp(firebaseConfig);
@@ -644,9 +760,25 @@ function initFirebase() {
       showFirebaseStatus('error');
       loadLocalFallback();
     });
+
+    // Real-time listener สำหรับการแก้ไขคำถาม-คำตอบ — ทุกคนเห็นพร้อมกัน
+    fbDb.ref('sop_edits').on('value', snap => {
+      sopEdits = snap.val() || {};
+      QA.forEach(item => {
+        if (editingIds.has(item.id)) return;
+        const body = document.getElementById('ans-body-' + item.id);
+        if (body) body.innerHTML = buildAnswerView(item);
+        const qSpan = document.getElementById('qtext-' + item.id);
+        if (qSpan) qSpan.textContent = getQ(item);
+      });
+    }, () => {
+      showFirebaseStatus('error');
+      loadLocalEditsFallback();
+    });
   } catch(e) {
     showFirebaseStatus('error');
     loadLocalFallback();
+    loadLocalEditsFallback();
   }
 }
 
@@ -673,6 +805,10 @@ function loadLocalFallback() {
       stored.forEach((img, i) => { sopImages[item.id]['local_' + i] = img; });
     }
   });
+}
+
+function loadLocalEditsFallback() {
+  sopEdits = JSON.parse(localStorage.getItem('sop_edit_all') || '{}');
 }
 
 function buildImgSection(id) {
