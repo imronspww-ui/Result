@@ -530,10 +530,12 @@ function handleCSVUpload(input) {
           const target  = parseSales(r['Sales Target']);
           if (!dateStr) continue;
           if (!branch || !branches.includes(branch)) { skippedBranch++; continue; }
-          const parts = dateStr.split('/');
+          // รองรับทั้ง "21/06/2026" และ "21-06-26" (ขีดกลาง + ปีย่อ 2 หลัก)
+          const parts = dateStr.split(/[\/\-]/);
           if (parts.length !== 3) { skippedDate++; continue; }
-          const [d, m, y] = parts.map(Number);
+          let [d, m, y] = parts.map(Number);
           if (isNaN(d)||isNaN(m)||isNaN(y)) { skippedDate++; continue; }
+          if (y < 100) y += 2000; // ปีย่อ 2 หลัก เช่น 26 → 2026
           months.add(y * 100 + m); // numeric key (YYYYMM) — sorts correctly across year boundaries
           parsed.push({ d, m, y, branch, sales, txn, target, label: `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}` });
         }
