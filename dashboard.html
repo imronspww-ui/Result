@@ -72,10 +72,11 @@
   </div>
   <div style="display:flex;align-items:center;gap:10px;">
     <div id="uploadStatus" style="font-size:12px;color:#ffe082;display:none;"></div>
-    <label style="display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border:1.5px solid rgba(255,255,255,0.5);border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;color:white;white-space:nowrap;">
+    <label id="uploadLabel" style="display:none;align-items:center;gap:7px;padding:7px 14px;border:1.5px solid rgba(255,255,255,0.5);border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;color:white;white-space:nowrap;">
       📂 อัปโหลด CSV
       <input type="file" id="csvFile" accept=".csv" style="display:none" onchange="handleCSVUpload(this)">
     </label>
+    <button id="mgrToggleBtn" onclick="toggleManagerMode()" style="background:rgba(255,255,255,0.18);border:none;color:white;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">🔒 โหมดผู้จัดการ</button>
   </div>
 </div>
 
@@ -202,6 +203,27 @@
 const branches = ['PMKP','PKOP','PPRP','PSOY','PNCP','PPAP','PBTY','PNEP'];
 const monthTargets = { PMKP:3253056, PKOP:560321, PPRP:1007451, PSOY:2876156, PNCP:1157769, PPAP:922907, PBTY:2617168, PNEP:1572941 };
 let daysInMonth = 30; // มิ.ย. 2026 มี 30 วัน — ใช้คิดสัดส่วนเป้าตามจำนวนวันที่มีข้อมูลจริง
+
+// ── โหมดผู้จัดการ (PIN gate) ──
+const MGR_PIN = 'imron2026';
+function isManagerMode() { return localStorage.getItem('mrdiy_mgr') === '1'; }
+function toggleManagerMode() {
+  if (isManagerMode()) {
+    if (confirm('ออกจากโหมดผู้จัดการ?')) { localStorage.removeItem('mrdiy_mgr'); location.reload(); }
+    return;
+  }
+  const pin = prompt('ใส่ PIN ผู้จัดการเพื่อเปิดสิทธิ์อัปโหลด');
+  if (pin === null) return;
+  if (pin === MGR_PIN) { localStorage.setItem('mrdiy_mgr', '1'); location.reload(); }
+  else alert('PIN ไม่ถูกต้อง');
+}
+function applyMgrUI() {
+  const mgr = isManagerMode();
+  const lbl = document.getElementById('uploadLabel');
+  if (lbl) lbl.style.display = mgr ? 'inline-flex' : 'none';
+  const btn = document.getElementById('mgrToggleBtn');
+  if (btn) btn.textContent = mgr ? '🔓 โหมดผู้จัดการ (เปิดอยู่)' : '🔒 โหมดผู้จัดการ';
+}
 
 const rawData = [
   {date:'01/06',PMKP:130661,PKOP:14942,PPRP:45904,PSOY:151320,PNCP:58510,PPAP:55212,PBTY:108160,PNEP:76982},
@@ -496,6 +518,7 @@ renderPieChart();
 renderDailyTable();
 renderLineChart();
 updateDayLabels('มิ.ย. 2026');
+applyMgrUI();
 
 // ── Firebase: ส่งสรุปยอดขายให้พนักงานดูที่หน้า employee.html ──
 let fbDbSales = null;
@@ -531,6 +554,7 @@ setTimeout(() => pushSalesSummary('มิ.ย. 2026'), 500);
 
 // ── CSV Upload Handler ──
 function handleCSVUpload(input) {
+  if (!isManagerMode()) { alert('ต้องเปิดโหมดผู้จัดการก่อนจึงอัปโหลดได้'); return; }
   const file = input.files[0];
   if (!file) return;
   document.getElementById('uploadError').style.display = 'none';

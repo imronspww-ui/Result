@@ -117,6 +117,7 @@ body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f3ef; color: 
       <div class="topbar-sub">ถามตอบ SOP การจัดสินค้า Display Guideline</div>
     </div>
   </div>
+  <button id="mgrToggleBtn" onclick="toggleManagerMode()" style="background:rgba(255,255,255,0.18);border:none;color:white;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;">🔒 โหมดผู้จัดการ</button>
 </div>
 
 <div class="container">
@@ -593,6 +594,25 @@ let sopEdits = {};
 let editingIds = new Set();
 let activeRole = null;
 
+// ── โหมดผู้จัดการ (PIN gate) ──
+const MGR_PIN = 'imron2026';
+function isManagerMode() { return localStorage.getItem('mrdiy_mgr') === '1'; }
+function toggleManagerMode() {
+  if (isManagerMode()) {
+    if (confirm('ออกจากโหมดผู้จัดการ?')) { localStorage.removeItem('mrdiy_mgr'); location.reload(); }
+    return;
+  }
+  const pin = prompt('ใส่ PIN ผู้จัดการเพื่อเปิดสิทธิ์แก้ไข');
+  if (pin === null) return;
+  if (pin === MGR_PIN) { localStorage.setItem('mrdiy_mgr', '1'); location.reload(); }
+  else alert('PIN ไม่ถูกต้อง');
+}
+function updateMgrBtn() {
+  const btn = document.getElementById('mgrToggleBtn');
+  if (!btn) return;
+  btn.textContent = isManagerMode() ? '🔓 โหมดผู้จัดการ (เปิดอยู่)' : '🔒 โหมดผู้จัดการ';
+}
+
 const ROLE_LABELS = {
   cashier: 'Cashier (แคชเชียร์)',
   promoter: 'Promoter (พนักงานจัดเรียงสินค้า)',
@@ -738,7 +758,7 @@ function render() {
       <div class="qa-q">
         <span class="qa-tag" style="color:${cat.color};background:${cat.bg};">${cat.label}</span>
         <span class="qa-q-text" id="qtext-${item.id}">${qText}</span>
-        <button class="qa-edit-btn" onclick="event.stopPropagation();startEdit(${item.id})" title="แก้ไขคำถาม-คำตอบนี้">✏️</button>
+        ${isManagerMode() ? `<button class="qa-edit-btn" onclick="event.stopPropagation();startEdit(${item.id})" title="แก้ไขคำถาม-คำตอบนี้">✏️</button>` : ''}
         <span class="qa-arrow">▼</span>
       </div>
       <div class="qa-a">
@@ -844,6 +864,7 @@ function buildAnswerEdit(item) {
 }
 
 function startEdit(id) {
+  if (!isManagerMode()) { alert('ต้องเปิดโหมดผู้จัดการก่อนจึงแก้ไขได้'); return; }
   const outer = document.querySelector(`[onclick="toggleQA(${id})"]`);
   if (outer) outer.classList.add('open');
   editingIds.add(id);
@@ -1104,6 +1125,7 @@ function closeLightbox() {
   document.getElementById('lightboxImg').src = '';
 }
 
+updateMgrBtn();
 initFirebase();
 render();
 

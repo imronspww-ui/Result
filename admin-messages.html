@@ -58,6 +58,14 @@ body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f3ef; color: 
 
 <div class="container">
 
+  <div id="lockScreen" style="text-align:center;padding:60px 20px;">
+    <div style="font-size:40px;margin-bottom:14px;">🔒</div>
+    <div style="font-size:15px;font-weight:600;margin-bottom:18px;color:#666;">หน้านี้สำหรับผู้จัดการเท่านั้น</div>
+    <button onclick="unlockPage()" style="background:#cc0000;color:white;border:none;border-radius:8px;padding:10px 24px;font-size:14px;font-weight:600;cursor:pointer;">🔓 ใส่ PIN เพื่อเข้าดู</button>
+  </div>
+
+  <div id="protectedContent" style="display:none;">
+
   <div class="grid-3">
     <div class="metric-card">
       <div class="metric-label">ทั้งหมด</div>
@@ -83,6 +91,7 @@ body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f3ef; color: 
 
   <div id="msgList"></div>
 
+  </div>
 </div>
 
 <div class="footer">MR.D.I.Y. Branch Manager System · ข้อความจากพนักงาน · น้องเลย์ Multi-Agent</div>
@@ -91,6 +100,26 @@ body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f3ef; color: 
 let fbDb = null;
 let messages = {};
 let activeFilter = 'all';
+
+// ── โหมดผู้จัดการ (PIN gate) ──
+const MGR_PIN = 'imron2026';
+function isManagerMode() { return localStorage.getItem('mrdiy_mgr') === '1'; }
+function unlockPage() {
+  const pin = prompt('ใส่ PIN ผู้จัดการ');
+  if (pin === null) return;
+  if (pin === MGR_PIN) {
+    localStorage.setItem('mrdiy_mgr', '1');
+    showUnlockedUI();
+  } else {
+    alert('PIN ไม่ถูกต้อง');
+  }
+}
+function showUnlockedUI() {
+  document.getElementById('lockScreen').style.display = 'none';
+  document.getElementById('protectedContent').style.display = 'block';
+  initFirebase();
+}
+if (isManagerMode()) { showUnlockedUI(); }
 
 function initFirebase() {
   try {
@@ -160,8 +189,6 @@ document.getElementById('filterRow').addEventListener('click', e => {
   activeFilter = chip.dataset.f;
   render();
 });
-
-initFirebase();
 </script>
 </body>
 </html>
