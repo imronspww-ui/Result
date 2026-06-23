@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ข้อความจากพนักงาน — MR.D.I.Y.</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="firebase-config.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f3ef; color: #1a1a1a; min-height: 100vh; }
+.topbar { background: #cc0000; color: white; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
+.topbar-title { font-size: 16px; font-weight: 600; }
+.topbar-sub { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+.container { max-width: 880px; margin: 0 auto; padding: 20px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+.metric-card { background: white; border-radius: 10px; padding: 14px 16px; border: 1px solid #e8e8e8; }
+.metric-label { font-size: 11px; color: #999; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.04em; }
+.metric-value { font-size: 24px; font-weight: 700; }
+.filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.filter-chip { padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1.5px solid #e8e8e8; color: #666; background: white; }
+.filter-chip.active { background: #cc0000; color: white; border-color: #cc0000; }
+.msg-card { background: white; border-radius: 12px; border: 1px solid #e8e8e8; padding: 16px 18px; margin-bottom: 12px; }
+.msg-card.status-ใหม่ { border-left: 4px solid #cc0000; }
+.msg-card.status-อ่านแล้ว { border-left: 4px solid #1565C0; }
+.msg-card.status-แก้ไขแล้ว { border-left: 4px solid #2e7d32; opacity: 0.75; }
+.msg-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.msg-tags { display: flex; gap: 6px; align-items: center; }
+.msg-tag { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 10px; }
+.tag-cat-คำถามSOP, .tag-cat-คำถาม { background: #e3f2fd; color: #1565C0; }
+.tag-cat-แจ้งปัญหา { background: #ffebee; color: #c62828; }
+.tag-cat-เสนอไอเดีย { background: #e8f5e9; color: #2e7d32; }
+.tag-cat-อื่นๆ { background: #f5f5f5; color: #757575; }
+.tag-branch { background: #fff3e0; color: #e65100; }
+.msg-time { font-size: 11px; color: #bbb; }
+.msg-text { font-size: 14px; color: #333; line-height: 1.6; margin-bottom: 12px; white-space: pre-wrap; }
+.msg-actions { display: flex; gap: 8px; }
+.status-btn { font-size: 11px; padding: 5px 12px; border-radius: 7px; border: 1px solid #e0e0e0; background: white; cursor: pointer; color: #666; }
+.status-btn:hover { background: #f5f5f5; }
+.status-btn.active { background: #1a1a1a; color: white; border-color: #1a1a1a; }
+.no-data { text-align: center; color: #bbb; padding: 40px; font-size: 13px; }
+.footer { text-align: center; font-size: 11px; color: #bbb; margin-top: 24px; padding-bottom: 20px; }
+@media (max-width: 600px) { .grid-3 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:14px;">
+    <a href="index.html" style="display:inline-flex;align-items:center;gap:6px;color:white;text-decoration:none;background:rgba(255,255,255,0.18);border-radius:7px;padding:6px 12px;font-size:13px;font-weight:600;">← หน้าหลัก</a>
+    <div>
+      <div class="topbar-title">ข้อความจากพนักงาน</div>
+      <div class="topbar-sub">คำถาม SOP · แจ้งปัญหา · เสนอไอเดีย (ไม่ระบุชื่อ)</div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="grid-3">
+    <div class="metric-card">
+      <div class="metric-label">ทั้งหมด</div>
+      <div class="metric-value" id="mTotal" style="color:#1a1a1a;">0</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">ใหม่ — ยังไม่อ่าน</div>
+      <div class="metric-value" id="mNew" style="color:#cc0000;">0</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">แจ้งปัญหา</div>
+      <div class="metric-value" id="mIssue" style="color:#e65100;">0</div>
+    </div>
+  </div>
+
+  <div class="filter-row" id="filterRow">
+    <span class="filter-chip active" data-f="all">ทั้งหมด</span>
+    <span class="filter-chip" data-f="ใหม่">🔴 ใหม่</span>
+    <span class="filter-chip" data-f="คำถาม SOP">❓ คำถาม SOP</span>
+    <span class="filter-chip" data-f="แจ้งปัญหา">⚠️ แจ้งปัญหา</span>
+    <span class="filter-chip" data-f="เสนอไอเดีย">💡 เสนอไอเดีย</span>
+  </div>
+
+  <div id="msgList"></div>
+
+</div>
+
+<div class="footer">MR.D.I.Y. Branch Manager System · ข้อความจากพนักงาน · น้องเลย์ Multi-Agent</div>
+
+<script>
+let fbDb = null;
+let messages = {};
+let activeFilter = 'all';
+
+function initFirebase() {
+  try {
+    if (typeof firebaseConfig === 'undefined' || firebaseConfig.apiKey === 'YOUR_API_KEY') {
+      document.getElementById('msgList').innerHTML = '<div class="no-data">ยังไม่ได้ตั้งค่า Firebase</div>';
+      return;
+    }
+    firebase.initializeApp(firebaseConfig);
+    fbDb = firebase.database();
+    fbDb.ref('employee_messages').on('value', snap => {
+      messages = snap.val() || {};
+      render();
+    });
+  } catch(e) {
+    document.getElementById('msgList').innerHTML = '<div class="no-data">เชื่อมต่อไม่ได้: ' + e.message + '</div>';
+  }
+}
+
+function setStatus(key, status) {
+  if (!fbDb) return;
+  fbDb.ref('employee_messages/' + key + '/status').set(status);
+}
+
+function render() {
+  const entries = Object.entries(messages).sort((a,b) => (b[1].createdAt||0) - (a[1].createdAt||0));
+
+  document.getElementById('mTotal').textContent = entries.length;
+  document.getElementById('mNew').textContent = entries.filter(([,m]) => m.status === 'ใหม่').length;
+  document.getElementById('mIssue').textContent = entries.filter(([,m]) => m.category === 'แจ้งปัญหา').length;
+
+  const filtered = entries.filter(([,m]) => {
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'ใหม่') return m.status === 'ใหม่';
+    return m.category === activeFilter;
+  });
+
+  const list = document.getElementById('msgList');
+  if (!filtered.length) { list.innerHTML = '<div class="no-data">ยังไม่มีข้อความในหมวดนี้</div>'; return; }
+
+  list.innerHTML = filtered.map(([key, m]) => {
+    const catClass = 'tag-cat-' + (m.category||'อื่นๆ').replace(/\s/g,'');
+    const time = m.createdAt ? new Date(m.createdAt).toLocaleString('th-TH', {dateStyle:'medium', timeStyle:'short'}) : '';
+    const status = m.status || 'ใหม่';
+    return `<div class="msg-card status-${status}">
+      <div class="msg-head">
+        <div class="msg-tags">
+          <span class="msg-tag ${catClass}">${m.category || 'อื่นๆ'}</span>
+          <span class="msg-tag tag-branch">${m.branch || '-'}</span>
+        </div>
+        <span class="msg-time">${time}</span>
+      </div>
+      <div class="msg-text">${(m.text||'').replace(/</g,'&lt;')}</div>
+      <div class="msg-actions">
+        <button class="status-btn ${status==='ใหม่'?'active':''}" onclick="setStatus('${key}','ใหม่')">🔴 ใหม่</button>
+        <button class="status-btn ${status==='อ่านแล้ว'?'active':''}" onclick="setStatus('${key}','อ่านแล้ว')">👀 อ่านแล้ว</button>
+        <button class="status-btn ${status==='แก้ไขแล้ว'?'active':''}" onclick="setStatus('${key}','แก้ไขแล้ว')">✅ แก้ไขแล้ว</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('filterRow').addEventListener('click', e => {
+  const chip = e.target.closest('.filter-chip');
+  if (!chip) return;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  activeFilter = chip.dataset.f;
+  render();
+});
+
+initFirebase();
+</script>
+</body>
+</html>

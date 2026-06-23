@@ -1106,6 +1106,15 @@ function closeLightbox() {
 
 initFirebase();
 render();
+
+// เปิดเส้นทางการเรียนรู้อัตโนมัติถ้ามาจากลิงก์ ?role=
+const urlRole = new URLSearchParams(location.search).get('role');
+if (urlRole && ROLE_PATHS[urlRole]) {
+  setTimeout(() => {
+    const btn = document.getElementById('role-' + urlRole);
+    if (btn) { showRolePath(urlRole, btn); btn.scrollIntoView({ behavior:'smooth', block:'start' }); }
+  }, 100);
+}
 </script>
 </body>
 </html>

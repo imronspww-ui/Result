@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ศูนย์การเรียนรู้พนักงาน — MR.D.I.Y.</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="firebase-config.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f3ef; color: #1a1a1a; min-height: 100vh; }
+.topbar { background: #cc0000; color: white; padding: 16px 24px; text-align: center; }
+.topbar-title { font-size: 19px; font-weight: 700; }
+.topbar-sub { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+.back-link { position: absolute; left: 20px; top: 18px; color: white; text-decoration: none; background: rgba(255,255,255,0.18); border-radius: 7px; padding: 6px 12px; font-size: 13px; font-weight: 600; }
+.container { max-width: 720px; margin: 0 auto; padding: 20px; }
+
+.branch-bar { background: white; border-radius: 14px; border: 2px solid #e8e8e8; padding: 16px 20px; margin-bottom: 18px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.branch-bar label { font-size: 13px; font-weight: 600; color: #666; }
+.branch-bar select { flex: 1; min-width: 140px; padding: 10px 12px; border-radius: 8px; border: 1.5px solid #e0e0e0; font-size: 14px; font-family: inherit; background: white; }
+.branch-bar select:focus { outline: none; border-color: #cc0000; }
+
+.card { background: white; border-radius: 14px; border: 1px solid #e8e8e8; padding: 20px 22px; margin-bottom: 18px; }
+.card-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+.card-sub { font-size: 12px; color: #999; margin-bottom: 16px; }
+
+.sales-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
+.sales-box { background: #fafafa; border-radius: 10px; padding: 12px; text-align: center; }
+.sales-box-label { font-size: 11px; color: #999; margin-bottom: 4px; }
+.sales-box-value { font-size: 18px; font-weight: 700; color: #cc0000; }
+.progress-track { background: #f0f0f0; border-radius: 20px; height: 14px; overflow: hidden; margin-top: 6px; }
+.progress-fill { height: 14px; border-radius: 20px; transition: width 0.6s ease; display: flex; align-items: center; justify-content: flex-end; }
+.progress-text { text-align: center; font-size: 13px; margin-top: 8px; font-weight: 600; }
+.sales-empty { text-align: center; color: #bbb; font-size: 13px; padding: 20px; }
+.sales-updated { text-align: center; font-size: 11px; color: #bbb; margin-top: 10px; }
+
+.learn-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.learn-btn { display: block; text-decoration: none; background: #fff5f5; border: 1.5px solid #ffd6d6; border-radius: 12px; padding: 16px 14px; text-align: center; transition: all 0.15s; }
+.learn-btn:hover { background: #ffebeb; border-color: #cc0000; transform: translateY(-2px); }
+.learn-icon { font-size: 26px; margin-bottom: 8px; }
+.learn-name { font-size: 13px; font-weight: 700; color: #cc0000; }
+.learn-desc { font-size: 11px; color: #999; margin-top: 3px; }
+
+.form-group { margin-bottom: 14px; }
+.form-label { display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 6px; }
+.form-select, .form-textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1.5px solid #e0e0e0; font-size: 14px; font-family: inherit; }
+.form-select:focus, .form-textarea:focus { outline: none; border-color: #cc0000; }
+.form-textarea { resize: vertical; min-height: 90px; }
+.form-anon { font-size: 11px; color: #999; margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+.form-submit { background: #cc0000; color: white; border: none; border-radius: 8px; padding: 11px 24px; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%; }
+.form-submit:hover { background: #a30000; }
+.form-submit:disabled { background: #ddd; cursor: default; }
+.form-success { background: #e8f5e9; color: #2e7d32; border-radius: 8px; padding: 12px 14px; font-size: 13px; text-align: center; display: none; margin-top: 10px; }
+.form-success.show { display: block; }
+
+.footer { text-align: center; font-size: 11px; color: #bbb; margin-top: 24px; padding-bottom: 24px; }
+@media (max-width: 600px) {
+  .sales-grid { grid-template-columns: 1fr; }
+  .learn-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="index.html" class="back-link">← หน้าหลัก</a>
+  <div class="topbar-title">🎓 ศูนย์การเรียนรู้พนักงาน MR.D.I.Y.</div>
+  <div class="topbar-sub">เรียน SOP · ดูยอดขายสาขาตัวเอง · ถาม-แจ้งปัญหาได้ทุกเรื่อง</div>
+</div>
+
+<div class="container">
+
+  <div class="branch-bar">
+    <label for="branchSelect">📍 สาขาของฉัน</label>
+    <select id="branchSelect" onchange="onBranchChange()">
+      <option value="">— เลือกสาขา —</option>
+      <option value="PMKP">PMKP</option>
+      <option value="PKOP">PKOP</option>
+      <option value="PPRP">PPRP</option>
+      <option value="PSOY">PSOY</option>
+      <option value="PNCP">PNCP</option>
+      <option value="PPAP">PPAP</option>
+      <option value="PBTY">PBTY</option>
+      <option value="PNEP">PNEP</option>
+    </select>
+  </div>
+
+  <!-- ยอดขายสาขาตัวเอง -->
+  <div class="card">
+    <div class="card-title">📊 ยอดขายสาขาของฉัน</div>
+    <div class="card-sub">อัปเดตล่าสุดจากผู้จัดการ</div>
+    <div id="salesContent"><div class="sales-empty">เลือกสาขาด้านบนเพื่อดูยอดขาย</div></div>
+  </div>
+
+  <!-- เรียน SOP -->
+  <div class="card">
+    <div class="card-title">📖 เรียน SOP ตามตำแหน่งของฉัน</div>
+    <div class="card-sub">เลือกตำแหน่งของคุณ จะได้ลำดับเรื่องที่ต้องรู้ทันที</div>
+    <div class="learn-grid">
+      <a class="learn-btn" href="sop.html?role=cashier">
+        <div class="learn-icon">🧾</div>
+        <div class="learn-name">Cashier</div>
+        <div class="learn-desc">แคชเชียร์</div>
+      </a>
+      <a class="learn-btn" href="sop.html?role=promoter">
+        <div class="learn-icon">🛒</div>
+        <div class="learn-name">Promoter</div>
+        <div class="learn-desc">จัดเรียงสินค้า</div>
+      </a>
+      <a class="learn-btn" href="sop.html?role=store">
+        <div class="learn-icon">📦</div>
+        <div class="learn-name">Store Asst</div>
+        <div class="learn-desc">ดูแลสต็อก</div>
+      </a>
+      <a class="learn-btn" href="sop.html?role=asstsup">
+        <div class="learn-icon">📋</div>
+        <div class="learn-name">Asst Sup</div>
+        <div class="learn-desc">ผู้ช่วยหัวหน้าร้าน</div>
+      </a>
+      <a class="learn-btn" href="sop.html?role=sup">
+        <div class="learn-icon">⭐</div>
+        <div class="learn-name">Supervisor</div>
+        <div class="learn-desc">หัวหน้าร้าน</div>
+      </a>
+      <a class="learn-btn" href="sop.html">
+        <div class="learn-icon">🔍</div>
+        <div class="learn-name">ค้นหาคำตอบ</div>
+        <div class="learn-desc">ถามน้องสอปได้เลย</div>
+      </a>
+    </div>
+  </div>
+
+  <!-- ถาม-แจ้งปัญหา -->
+  <div class="card">
+    <div class="card-title">💬 ถามคำถาม / แจ้งปัญหา / เสนอไอเดีย</div>
+    <div class="card-sub">ส่งถึงผู้จัดการโดยตรง</div>
+
+    <div class="form-group">
+      <label class="form-label">หัวข้อ</label>
+      <select class="form-select" id="msgCategory">
+        <option value="คำถาม SOP">❓ คำถาม SOP</option>
+        <option value="แจ้งปัญหา">⚠️ แจ้งปัญหาภายในสาขา</option>
+        <option value="เสนอไอเดีย">💡 เสนอไอเดีย / ข้อเสนอแนะ</option>
+        <option value="อื่นๆ">📝 อื่นๆ</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">ข้อความของคุณ</label>
+      <textarea class="form-textarea" id="msgText" placeholder="พิมพ์รายละเอียดที่นี่..."></textarea>
+    </div>
+
+    <div class="form-anon">🔒 ไม่ระบุชื่อ — ผู้จัดการจะเห็นแค่สาขาและข้อความ</div>
+
+    <button class="form-submit" id="submitBtn" onclick="submitMessage()">ส่งข้อความ</button>
+    <div class="form-success" id="formSuccess">✅ ส่งสำเร็จแล้ว ขอบคุณที่แจ้งมาครับ</div>
+  </div>
+
+</div>
+
+<div class="footer">MR.D.I.Y. Branch Manager System · ศูนย์การเรียนรู้พนักงาน · น้องเลย์ Multi-Agent</div>
+
+<script>
+let fbDb = null;
+let salesData = null;
+
+function initFirebase() {
+  try {
+    if (typeof firebaseConfig === 'undefined' || firebaseConfig.apiKey === 'YOUR_API_KEY') return;
+    firebase.initializeApp(firebaseConfig);
+    fbDb = firebase.database();
+    fbDb.ref('sales_summary').on('value', snap => {
+      salesData = snap.val();
+      renderSales();
+    });
+  } catch(e) { /* ทำงานต่อได้แม้ไม่มี Firebase */ }
+}
+
+function fmtM(n) {
+  if (n >= 1000000) return '฿' + (n/1000000).toFixed(2) + 'M';
+  if (n >= 1000) return '฿' + (n/1000).toFixed(1) + 'K';
+  return '฿' + Math.round(n).toLocaleString();
+}
+
+function onBranchChange() {
+  const b = document.getElementById('branchSelect').value;
+  localStorage.setItem('employee_branch', b);
+  renderSales();
+}
+
+function renderSales() {
+  const content = document.getElementById('salesContent');
+  const branch = document.getElementById('branchSelect').value;
+
+  if (!branch) { content.innerHTML = '<div class="sales-empty">เลือกสาขาด้านบนเพื่อดูยอดขาย</div>'; return; }
+  if (!salesData || !salesData.branches || !salesData.branches[branch]) {
+    content.innerHTML = '<div class="sales-empty">ยังไม่มีข้อมูลยอดขาย — รอผู้จัดการอัปโหลดข้อมูล</div>';
+    return;
+  }
+
+  const d = salesData.branches[branch];
+  const pct = d.pct || 0;
+  const color = pct >= 100 ? '#2e7d32' : pct >= 75 ? '#f57f17' : '#c62828';
+  const emoji = pct >= 100 ? '🎉' : pct >= 75 ? '💪' : '⏳';
+
+  content.innerHTML = `
+    <div class="sales-grid">
+      <div class="sales-box">
+        <div class="sales-box-label">ยอดขายรวม</div>
+        <div class="sales-box-value">${fmtM(d.total)}</div>
+      </div>
+      <div class="sales-box">
+        <div class="sales-box-label">เฉลี่ย/วัน</div>
+        <div class="sales-box-value">${fmtM(d.avgPerDay)}</div>
+      </div>
+      <div class="sales-box">
+        <div class="sales-box-label">จำนวนวัน</div>
+        <div class="sales-box-value">${d.days} วัน</div>
+      </div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" style="width:${Math.min(pct,100)}%;background:${color};"></div></div>
+    <div class="progress-text" style="color:${color};">${emoji} เทียบเป้า ${pct}%</div>
+    <div class="sales-updated">${salesData.monthLabel || ''} ${salesData.updatedAt ? '· อัปเดต ' + new Date(salesData.updatedAt).toLocaleString('th-TH') : ''}</div>
+  `;
+}
+
+async function submitMessage() {
+  const branch = document.getElementById('branchSelect').value;
+  const category = document.getElementById('msgCategory').value;
+  const text = document.getElementById('msgText').value.trim();
+  const btn = document.getElementById('submitBtn');
+  const successEl = document.getElementById('formSuccess');
+
+  if (!branch) { alert('กรุณาเลือกสาขาของคุณก่อนส่งข้อความ'); return; }
+  if (!text) { alert('กรุณาพิมพ์ข้อความก่อนส่ง'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'กำลังส่ง...';
+
+  try {
+    if (fbDb) {
+      await fbDb.ref('employee_messages').push({
+        branch, category, text,
+        createdAt: Date.now(),
+        status: 'ใหม่',
+      });
+    } else {
+      const stored = JSON.parse(localStorage.getItem('employee_messages_local') || '[]');
+      stored.push({ branch, category, text, createdAt: Date.now(), status: 'ใหม่' });
+      localStorage.setItem('employee_messages_local', JSON.stringify(stored));
+    }
+    document.getElementById('msgText').value = '';
+    successEl.classList.add('show');
+    setTimeout(() => successEl.classList.remove('show'), 4000);
+  } catch(e) {
+    alert('ส่งไม่สำเร็จ: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'ส่งข้อความ';
+  }
+}
+
+// โหลดสาขาที่เคยเลือกไว้
+const savedBranch = localStorage.getItem('employee_branch');
+if (savedBranch) document.getElementById('branchSelect').value = savedBranch;
+
+initFirebase();
+renderSales();
+</script>
+</body>
+</html>

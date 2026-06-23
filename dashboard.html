@@ -6,6 +6,9 @@
 <title>MR.D.I.Y. Sales Dashboard — June 2026</title>
 <script src="lib/chart.umd.min.js"></script>
 <script src="lib/papaparse.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="firebase-config.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f3ef; color: #1a1a1a; min-height: 100vh; }
@@ -494,6 +497,38 @@ renderDailyTable();
 renderLineChart();
 updateDayLabels('มิ.ย. 2026');
 
+// ── Firebase: ส่งสรุปยอดขายให้พนักงานดูที่หน้า employee.html ──
+let fbDbSales = null;
+function initFirebaseSales() {
+  try {
+    if (typeof firebaseConfig === 'undefined' || firebaseConfig.apiKey === 'YOUR_API_KEY') return;
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    fbDbSales = firebase.database();
+  } catch(e) { /* เงียบไว้ ไม่กระทบ Dashboard หลัก */ }
+}
+
+function pushSalesSummary(monthLabel) {
+  if (!fbDbSales) return;
+  const summary = {};
+  branches.forEach(b => {
+    const proratedTarget = monthTargets[b] * (rawData.length / daysInMonth);
+    summary[b] = {
+      total: totals[b],
+      avgPerDay: Math.round(totals[b] / rawData.length),
+      pct: Math.round((totals[b] / proratedTarget) * 100),
+      days: rawData.length,
+    };
+  });
+  fbDbSales.ref('sales_summary').set({
+    branches: summary,
+    monthLabel: monthLabel,
+    updatedAt: Date.now(),
+  }).catch(()=>{});
+}
+
+initFirebaseSales();
+setTimeout(() => pushSalesSummary('มิ.ย. 2026'), 500);
+
 // ── CSV Upload Handler ──
 function handleCSVUpload(input) {
   const file = input.files[0];
@@ -606,6 +641,7 @@ function handleCSVUpload(input) {
         renderDailyTable();
         renderLineChart();
         updateDayLabels(`${thaiM[lm]} ${ly}`);
+        pushSalesSummary(`${thaiM[lm]} ${ly}`);
 
         const statusEl = document.getElementById('uploadStatus');
         const skipped = skippedBranch + skippedDate;
