@@ -123,7 +123,7 @@
         <div class="section-title" id="barChartTitle">ยอดขายรวม 1–15 มิ.ย. รายสาขา</div>
         <div class="legend">
           <span><span class="legend-dot" style="background:#cc0000;"></span>ยอดขาย</span>
-          <span><span class="legend-dot" style="background:#ddd;border:1px solid #bbb;"></span>เป้ารายเดือน (÷2)</span>
+          <span><span class="legend-dot" style="background:#ddd;border:1px solid #bbb;"></span>เป้าตามสัดส่วนวัน</span>
         </div>
         <div class="chart-wrap"><canvas id="barChart" role="img" aria-label="ยอดขาย 1-15 มิ.ย. 2026 รายสาขา">ยอดขายรายสาขา มิถุนายน 2026</canvas></div>
       </div>
@@ -143,7 +143,7 @@
             <th style="text-align:right;">ยอดเฉลี่ย/วัน</th>
             <th style="text-align:right;">Transactions</th>
             <th style="text-align:right;">Basket Size</th>
-            <th style="text-align:right;">เทียบเป้าครึ่งเดือน</th>
+            <th style="text-align:right;">เทียบเป้า (ตามวันที่ข้อมูล)</th>
             <th>สถานะ</th>
           </tr>
         </thead>
@@ -198,6 +198,7 @@
 <script>
 const branches = ['PMKP','PKOP','PPRP','PSOY','PNCP','PPAP','PBTY','PNEP'];
 const monthTargets = { PMKP:3253056, PKOP:560321, PPRP:1007451, PSOY:2876156, PNCP:1157769, PPAP:922907, PBTY:2617168, PNEP:1572941 };
+let daysInMonth = 30; // มิ.ย. 2026 มี 30 วัน — ใช้คิดสัดส่วนเป้าตามจำนวนวันที่มีข้อมูลจริง
 
 const rawData = [
   {date:'01/06',PMKP:130661,PKOP:14942,PPRP:45904,PSOY:151320,PNCP:58510,PPAP:55212,PBTY:108160,PNEP:76982},
@@ -242,8 +243,8 @@ function renderTable() {
     const avg = Math.round(total/rawData.length);
     const txn = txnData[b];
     const basket = txn ? Math.round(total/txn) : 0;
-    const halfTarget = monthTargets[b] / 2;
-    const pct = Math.round((total/halfTarget)*100);
+    const proratedTarget = monthTargets[b] * (rawData.length / daysInMonth);
+    const pct = Math.round((total/proratedTarget)*100);
     const color = pct >= 100 ? '#2e7d32' : pct >= 75 ? '#f57f17' : '#c62828';
     const badge = pct >= 100
       ? `<span class="badge badge-green">ถึงเป้า ${pct}%</span>`
@@ -275,7 +276,7 @@ function renderBarChart() {
       labels: sorted,
       datasets: [
         { label: 'ยอดขาย 15 วัน', data: sorted.map(b=>totals[b]), backgroundColor: sorted.map(b=>branchColors[b]), borderRadius: 4 },
-        { label: 'เป้าครึ่งเดือน', data: sorted.map(b=>monthTargets[b]/2), backgroundColor: 'rgba(0,0,0,0.06)', borderColor:'#ccc', borderWidth:1, borderRadius:4 }
+        { label: 'เป้าตามสัดส่วนวัน', data: sorted.map(b=>monthTargets[b]*(rawData.length/daysInMonth)), backgroundColor: 'rgba(0,0,0,0.06)', borderColor:'#ccc', borderWidth:1, borderRadius:4 }
       ]
     },
     options: {
@@ -548,6 +549,7 @@ function handleCSVUpload(input) {
         const latestKey = months.has(currentKey) ? currentKey : [...months].sort((a,b) => b - a)[0];
         const ly = Math.floor(latestKey / 100), lm = latestKey % 100;
         const filtered = parsed.filter(r => r.m === lm && r.y === ly);
+        daysInMonth = new Date(ly, lm, 0).getDate();
         const thaiM = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
         // Rebuild rawData
