@@ -81,6 +81,29 @@ body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f3ef; color: 
 .qa-edit-cancel:hover { background: #eee; }
 .qa-edit-revert { background: none; color: #e65100; border: 1px solid #ffb74d; border-radius: 8px; padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
 .qa-edit-revert:hover { background: #fff3e0; }
+.role-wrap { background: white; border-radius: 14px; border: 2px solid #e8e8e8; padding: 18px 22px; margin-bottom: 20px; }
+.role-label { font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 12px; }
+.role-grid { display: flex; gap: 10px; flex-wrap: wrap; }
+.role-card { flex: 1; min-width: 130px; border: 1.5px solid #e8e8e8; border-radius: 10px; padding: 12px 10px; text-align: center; cursor: pointer; transition: all 0.15s; background: #fafafa; }
+.role-card:hover { border-color: #cc0000; background: #fff5f5; }
+.role-card.active { border-color: #cc0000; background: #fff5f5; box-shadow: 0 2px 8px rgba(204,0,0,0.12); }
+.role-icon { font-size: 24px; margin-bottom: 6px; }
+.role-name { font-size: 13px; font-weight: 600; color: #333; }
+.role-path-box { margin-top: 16px; border-top: 1px dashed #e0e0e0; padding-top: 16px; display: none; }
+.role-path-box.show { display: block; }
+.role-path-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.role-path-title { font-size: 14px; font-weight: 600; color: #cc0000; }
+.role-path-close { background: none; border: none; color: #bbb; cursor: pointer; font-size: 16px; }
+.role-step { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f5f5f5; cursor: pointer; }
+.role-step:last-child { border-bottom: none; }
+.role-step:hover .role-step-text { color: #cc0000; }
+.role-step-num { width: 24px; height: 24px; border-radius: 50%; background: #fff3e0; color: #e65100; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.role-step-body { flex: 1; }
+.role-step-text { font-size: 13px; font-weight: 600; color: #333; line-height: 1.4; transition: color 0.15s; }
+.role-step-note { font-size: 11px; color: #999; margin-top: 2px; }
+.role-step-arrow { font-size: 13px; color: #ccc; flex-shrink: 0; margin-top: 3px; }
+.qa-item.jump-highlight { animation: jumpFlash 1.6s ease; }
+@keyframes jumpFlash { 0%,100% { box-shadow: 0 3px 16px rgba(204,0,0,0.08); } 30% { box-shadow: 0 0 0 4px rgba(204,0,0,0.25); } }
 </style>
 </head>
 <body>
@@ -97,6 +120,33 @@ body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f3ef; color: 
 </div>
 
 <div class="container">
+
+  <div class="role-wrap">
+    <div class="role-label">เส้นทางการเรียนรู้ตามตำแหน่ง</div>
+    <div class="role-grid">
+      <div class="role-card" id="role-cashier" onclick="showRolePath('cashier', this)">
+        <div class="role-icon">🧾</div>
+        <div class="role-name">Cashier</div>
+      </div>
+      <div class="role-card" id="role-promoter" onclick="showRolePath('promoter', this)">
+        <div class="role-icon">🛒</div>
+        <div class="role-name">Promoter</div>
+      </div>
+      <div class="role-card" id="role-store" onclick="showRolePath('store', this)">
+        <div class="role-icon">📦</div>
+        <div class="role-name">Store Asst</div>
+      </div>
+      <div class="role-card" id="role-asstsup" onclick="showRolePath('asstsup', this)">
+        <div class="role-icon">📋</div>
+        <div class="role-name">Asst Sup</div>
+      </div>
+      <div class="role-card" id="role-sup" onclick="showRolePath('sup', this)">
+        <div class="role-icon">⭐</div>
+        <div class="role-name">Supervisor</div>
+      </div>
+    </div>
+    <div class="role-path-box" id="rolePathBox"></div>
+  </div>
 
   <div class="search-wrap">
     <div class="search-label">ถามน้องสอป</div>
@@ -541,6 +591,73 @@ let currentFilter = 'all';
 let currentQuery = '';
 let sopEdits = {};
 let editingIds = new Set();
+let activeRole = null;
+
+const ROLE_LABELS = {
+  cashier: 'Cashier (แคชเชียร์)',
+  promoter: 'Promoter (พนักงานจัดเรียงสินค้า)',
+  store: 'Store Asst (ผู้ช่วยหัวหน้าร้าน - สต็อก)',
+  asstsup: 'Asst Supervisor (ผู้ช่วยหัวหน้าร้าน)',
+  sup: 'Supervisor (หัวหน้าร้าน)',
+};
+
+// ลำดับ id ของ Q&A ที่ต้องเรียนรู้ตามตำแหน่ง (เรียงจากพื้นฐาน → เฉพาะทาง)
+const ROLE_PATHS = {
+  cashier: [
+    { id: 21, note: 'พื้นฐานการต้อนรับลูกค้าทุกครั้ง' },
+    { id: 1,  note: 'ต้องตรวจราคาให้ตรงก่อนคิดเงิน' },
+    { id: 25, note: 'หน้าที่ประจำวันของแคชเชียร์' },
+    { id: 26, note: 'ขั้นตอนเปิด-ปิดรอบเงิน' },
+    { id: 35, note: 'รับมือลูกค้าขอคืน/เปลี่ยนสินค้า' },
+    { id: 23, note: 'กฎที่ต้องรู้ก่อนเริ่มงาน' },
+    { id: 29, note: 'ขั้นตอนช่วยปิดร้าน' },
+  ],
+  promoter: [
+    { id: 21, note: 'ต้อนรับลูกค้าด้วย EGS เสมอ' },
+    { id: 4,  note: 'หลักจัดเรียงสินค้าพื้นฐานที่ใช้ทุกแผนก' },
+    { id: 1,  note: 'ป้ายราคาต้องถูกตำแหน่งเสมอ' },
+    { id: 2,  note: 'ห้ามปล่อยให้ชั้นว่าง' },
+    { id: 3,  note: 'รู้ว่าสินค้าไหนต้องกั้นป้องกัน' },
+    { id: 20, note: 'จำข้อห้ามให้ขึ้นใจ' },
+    { id: 24, note: 'กรอบเวลาจัดสินค้าใหม่ขึ้นขาย' },
+    { id: 22, note: 'ดูแลสต็อกให้พร้อมขายเสมอ' },
+    { id: 32, note: 'กิจวัตรที่ต้องทำก่อนเปิดร้าน' },
+  ],
+  store: [
+    { id: 30, note: 'เข้าใจภาพรวมตำแหน่งงานในร้านก่อน' },
+    { id: 24, note: 'หน้าที่หลัก: รับสินค้าและจัดเข้าระบบ' },
+    { id: 22, note: 'ตรวจสต็อกให้ได้มาตรฐาน' },
+    { id: 27, note: 'ขั้นตอนจัดการสินค้าเสียหาย' },
+    { id: 28, note: 'มีส่วนร่วมในการนับสต็อกประจำปี' },
+    { id: 33, note: 'ป้องกันสินค้ามูลค่าสูงสูญหาย' },
+    { id: 31, note: 'รู้ใบอนุญาตที่เกี่ยวข้องกับสต็อก' },
+    { id: 23, note: 'กฎระเบียบที่ต้องปฏิบัติตาม' },
+  ],
+  asstsup: [
+    { id: 30, note: 'ทบทวนหน้าที่ทุกตำแหน่งที่ต้องดูแล' },
+    { id: 34, note: 'หลักบริหารร้าน 4 ด้านที่ต้องคุมให้ได้' },
+    { id: 32, note: 'ตรวจสอบกิจวัตรเช้าของทีม' },
+    { id: 25, note: 'ติดตามให้ DSR เสร็จตามเวลา' },
+    { id: 26, note: 'ดูแลขั้นตอนปิดรอบ-ปิดวัน' },
+    { id: 27, note: 'อนุมัติ/ตรวจสอบ Damage Declaration' },
+    { id: 23, note: 'คุมมาตรฐานวินัยพนักงาน' },
+    { id: 35, note: 'ตัดสินใจกรณีคืนเงินที่ซับซ้อน' },
+    { id: 29, note: 'ตรวจสอบขั้นตอนปิดร้านให้ครบ' },
+  ],
+  sup: [
+    { id: 30, note: 'ภาพรวมโครงสร้างตำแหน่งทั้งร้าน' },
+    { id: 34, note: 'รับผิดชอบ 4 องค์ประกอบบริหารร้านโดยตรง' },
+    { id: 28, note: 'เป็นผู้นำหลักในการนับสต็อกประจำปี' },
+    { id: 31, note: 'ดูแลให้สาขามีใบอนุญาตครบ' },
+    { id: 27, note: 'ตัดสินใจอนุมัติ Damage ขั้นสุดท้าย' },
+    { id: 25, note: 'รับผิดชอบความถูกต้องของ DSR' },
+    { id: 26, note: 'กำกับมาตรฐาน EOS-EOD ทั้งร้าน' },
+    { id: 29, note: 'รับผิดชอบการปิดร้านโดยรวม' },
+    { id: 23, note: 'บังคับใช้กฎระเบียบกับทีม' },
+    { id: 35, note: 'อนุมัติกรณีคืนเงิน/เปลี่ยนสินค้าที่ยาก' },
+    { id: 4,  note: 'สอนหลักจัดเรียงสินค้าให้พนักงานใหม่ได้' },
+  ],
+};
 
 function doSearch() {
   currentQuery = document.getElementById('searchBox').value.toLowerCase().trim();
@@ -635,6 +752,73 @@ function render() {
 function toggleQA(id) {
   const el = document.querySelector(`[onclick="toggleQA(${id})"]`);
   el.classList.toggle('open');
+}
+
+// ── เส้นทางการเรียนรู้ตามตำแหน่ง ──
+function showRolePath(role, btn) {
+  document.querySelectorAll('.role-card').forEach(c => c.classList.remove('active'));
+  const box = document.getElementById('rolePathBox');
+
+  if (activeRole === role) {
+    activeRole = null;
+    box.classList.remove('show');
+    box.innerHTML = '';
+    return;
+  }
+
+  activeRole = role;
+  btn.classList.add('active');
+  const steps = ROLE_PATHS[role];
+
+  box.innerHTML = `
+    <div class="role-path-header">
+      <div class="role-path-title">📚 ลำดับการเรียนรู้ — ${ROLE_LABELS[role]}</div>
+      <button class="role-path-close" onclick="closeRolePath()">✕</button>
+    </div>
+    ${steps.map((s, i) => {
+      const item = QA.find(x => x.id === s.id);
+      if (!item) return '';
+      return `<div class="role-step" onclick="jumpToQA(${item.id})">
+        <div class="role-step-num">${i + 1}</div>
+        <div class="role-step-body">
+          <div class="role-step-text">${getQ(item)}</div>
+          <div class="role-step-note">${s.note}</div>
+        </div>
+        <div class="role-step-arrow">→</div>
+      </div>`;
+    }).join('')}
+  `;
+  box.classList.add('show');
+}
+
+function closeRolePath() {
+  activeRole = null;
+  document.querySelectorAll('.role-card').forEach(c => c.classList.remove('active'));
+  const box = document.getElementById('rolePathBox');
+  box.classList.remove('show');
+  box.innerHTML = '';
+}
+
+function jumpToQA(id) {
+  // ล้างค่าค้นหา/ฟิลเตอร์ก่อน เพื่อให้แน่ใจว่าข้อนี้อยู่ในรายการที่แสดง
+  if (currentFilter !== 'all' || currentQuery) {
+    currentFilter = 'all';
+    currentQuery = '';
+    document.getElementById('searchBox').value = '';
+    document.getElementById('clearBtn').style.display = 'none';
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    document.querySelector(`[onclick="setFilter('all',this)"]`).classList.add('active');
+    render();
+  }
+
+  setTimeout(() => {
+    const el = document.querySelector(`[onclick="toggleQA(${id})"]`);
+    if (!el) return;
+    el.classList.add('open');
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('jump-highlight');
+    setTimeout(() => el.classList.remove('jump-highlight'), 1600);
+  }, 50);
 }
 
 // ── Edit SOP content ──
