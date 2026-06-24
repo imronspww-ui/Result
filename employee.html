@@ -138,7 +138,7 @@ body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f3ef; color: 
 
     <div class="form-group">
       <label class="form-label">หัวข้อ</label>
-      <select class="form-select" id="msgCategory">
+      <select class="form-select" id="msgCategory" onchange="onCategoryChange()">
         <option value="คำถาม SOP">❓ คำถาม SOP</option>
         <option value="แจ้งปัญหา">⚠️ แจ้งปัญหาภายในสาขา</option>
         <option value="เสนอไอเดีย">💡 เสนอไอเดีย / ข้อเสนอแนะ</option>
@@ -146,12 +146,17 @@ body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f3ef; color: 
       </select>
     </div>
 
+    <div class="form-group" id="nameGroup">
+      <label class="form-label">ชื่อของคุณ (ไม่บังคับ)</label>
+      <input type="text" class="form-select" id="msgName" placeholder="ใส่ชื่อถ้าต้องการให้ผู้จัดการติดต่อกลับ">
+    </div>
+
     <div class="form-group">
       <label class="form-label">ข้อความของคุณ</label>
       <textarea class="form-textarea" id="msgText" placeholder="พิมพ์รายละเอียดที่นี่..."></textarea>
     </div>
 
-    <div class="form-anon">🔒 ไม่ระบุชื่อ — ผู้จัดการจะเห็นแค่สาขาและข้อความ</div>
+    <div class="form-anon" id="anonNote">📝 แจ้งชื่อได้ — ผู้จัดการจะเห็นชื่อ สาขา และข้อความ</div>
 
     <button class="form-submit" id="submitBtn" onclick="submitMessage()">ส่งข้อความ</button>
     <div class="form-success" id="formSuccess">✅ ส่งสำเร็จแล้ว ขอบคุณที่แจ้งมาครับ</div>
@@ -181,6 +186,22 @@ function fmtM(n) {
   if (n >= 1000000) return '฿' + (n/1000000).toFixed(2) + 'M';
   if (n >= 1000) return '฿' + (n/1000).toFixed(1) + 'K';
   return '฿' + Math.round(n).toLocaleString();
+}
+
+function onCategoryChange() {
+  const category = document.getElementById('msgCategory').value;
+  const nameGroup = document.getElementById('nameGroup');
+  const anonNote = document.getElementById('anonNote');
+  const nameInput = document.getElementById('msgName');
+
+  if (category === 'แจ้งปัญหา') {
+    nameGroup.style.display = 'none';
+    nameInput.value = '';
+    anonNote.textContent = '🔒 ไม่ระบุชื่อ — ผู้จัดการจะเห็นแค่สาขาและข้อความ เพื่อความปลอดภัยของคุณ';
+  } else {
+    nameGroup.style.display = 'block';
+    anonNote.textContent = '📝 แจ้งชื่อได้ (ไม่บังคับ) — ผู้จัดการจะเห็นชื่อ สาขา และข้อความ';
+  }
 }
 
 function onBranchChange() {
@@ -232,6 +253,9 @@ async function submitMessage() {
   const btn = document.getElementById('submitBtn');
   const successEl = document.getElementById('formSuccess');
 
+  // แจ้งปัญหา → ไม่ส่งชื่อเด็ดขาด เพื่อความปลอดภัยของพนักงาน แม้ผู้ใช้จะพิมพ์ไว้ก่อนเปลี่ยนหัวข้อ
+  const name = category === 'แจ้งปัญหา' ? '' : document.getElementById('msgName').value.trim();
+
   if (!branch) { alert('กรุณาเลือกสาขาของคุณก่อนส่งข้อความ'); return; }
   if (!text) { alert('กรุณาพิมพ์ข้อความก่อนส่ง'); return; }
 
@@ -241,16 +265,17 @@ async function submitMessage() {
   try {
     if (fbDb) {
       await fbDb.ref('employee_messages').push({
-        branch, category, text,
+        branch, category, text, name,
         createdAt: Date.now(),
         status: 'ใหม่',
       });
     } else {
       const stored = JSON.parse(localStorage.getItem('employee_messages_local') || '[]');
-      stored.push({ branch, category, text, createdAt: Date.now(), status: 'ใหม่' });
+      stored.push({ branch, category, text, name, createdAt: Date.now(), status: 'ใหม่' });
       localStorage.setItem('employee_messages_local', JSON.stringify(stored));
     }
     document.getElementById('msgText').value = '';
+    document.getElementById('msgName').value = '';
     successEl.classList.add('show');
     setTimeout(() => successEl.classList.remove('show'), 4000);
   } catch(e) {
@@ -267,6 +292,7 @@ if (savedBranch) document.getElementById('branchSelect').value = savedBranch;
 
 initFirebase();
 renderSales();
+onCategoryChange();
 </script>
 </body>
 </html>
