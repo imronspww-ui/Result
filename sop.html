@@ -707,6 +707,19 @@ const QA = [
     </ul>` },
 ];
 
+// ── หัวข้อ SOP ที่ผู้จัดการเพิ่มจากคำถามพนักงาน (sync ผ่าน Firebase) ──
+let sopCustom = {};
+function idLit(id) {
+  // หัวข้อเดิม id เป็นเลข ใช้ตรงๆได้ / หัวข้อที่เพิ่มจากพนักงาน id เป็น Firebase key (string) ต้องใส่ quote
+  return typeof id === 'string' ? `'${id.replace(/'/g, "\\'")}'` : id;
+}
+function getAllItems() {
+  const custom = Object.entries(sopCustom).map(([key, v]) => ({
+    id: key, cat: v.cat || 'sop', q: v.q, a: v.a, tags: v.tags || [], fromEmployee: true,
+  }));
+  return QA.concat(custom);
+}
+
 let currentFilter = 'all';
 let currentQuery = '';
 let sopEdits = {};
@@ -851,7 +864,7 @@ const CAT_LABEL = {
 };
 
 function render() {
-  const filtered = QA.filter(matches);
+  const filtered = getAllItems().filter(matches);
   const list = document.getElementById('qaList');
   const count = document.getElementById('resultCount');
 
@@ -873,11 +886,14 @@ function render() {
     const cat = CAT_LABEL[item.cat] || { label: item.cat, color: '#666', bg: '#f5f5f5' };
     const qVal = getQ(item);
     const qText = currentQuery ? highlight(qVal, currentQuery) : qVal;
-    return `<div class="qa-item" onclick="toggleQA(${item.id})">
+    const fromEmpBadge = item.fromEmployee ? `<span class="qa-tag" style="color:#2e7d32;background:#e8f5e9;" title="เพิ่มจากคำถามพนักงาน">🆕</span>` : '';
+    return `<div class="qa-item" onclick="toggleQA(${idLit(item.id)})">
       <div class="qa-q">
         <span class="qa-tag" style="color:${cat.color};background:${cat.bg};">${cat.label}</span>
+        ${fromEmpBadge}
         <span class="qa-q-text" id="qtext-${item.id}">${qText}</span>
-        ${isManagerMode() ? `<button class="qa-edit-btn" onclick="event.stopPropagation();startEdit(${item.id})" title="แก้ไขคำถาม-คำตอบนี้">✏️</button>` : ''}
+        ${isManagerMode() ? `<button class="qa-edit-btn" onclick="event.stopPropagation();startEdit(${idLit(item.id)})" title="แก้ไขคำถาม-คำตอบนี้">✏️</button>` : ''}
+        ${(isManagerMode() && item.fromEmployee) ? `<button class="qa-edit-btn" onclick="event.stopPropagation();deleteSopTopic(${idLit(item.id)})" title="ลบหัวข้อนี้">🗑️</button>` : ''}
         <span class="qa-arrow">▼</span>
       </div>
       <div class="qa-a">
@@ -889,7 +905,7 @@ function render() {
 }
 
 function toggleQA(id) {
-  const el = document.querySelector(`[onclick="toggleQA(${id})"]`);
+  const el = document.querySelector(`[onclick="toggleQA(${idLit(id)})"]`);
   el.classList.toggle('open');
 }
 
@@ -951,7 +967,7 @@ function jumpToQA(id) {
   }
 
   setTimeout(() => {
-    const el = document.querySelector(`[onclick="toggleQA(${id})"]`);
+    const el = document.querySelector(`[onclick="toggleQA(${idLit(id)})"]`);
     if (!el) return;
     el.classList.add('open');
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -975,19 +991,19 @@ function buildAnswerEdit(item) {
     <textarea class="qa-edit-textarea" id="edit-a-${item.id}" rows="8">${getA(item)}</textarea>
     <div class="qa-edit-hint">ใส่ HTML ได้ เช่น &lt;strong&gt;ตัวหนา&lt;/strong&gt;, &lt;br&gt; ขึ้นบรรทัดใหม่, &lt;ul&gt;&lt;li&gt;...&lt;/li&gt;&lt;/ul&gt; ทำลิสต์</div>
     <div class="qa-edit-actions">
-      <button class="qa-edit-save" onclick="saveEdit(${item.id})">💾 บันทึก</button>
-      <button class="qa-edit-cancel" onclick="cancelEdit(${item.id})">ยกเลิก</button>
-      ${hasOverride ? `<button class="qa-edit-revert" id="revert-btn-${item.id}" onclick="confirmRevert(${item.id}, this)">↺ คืนค่าเดิม</button>` : ''}
+      <button class="qa-edit-save" onclick="saveEdit(${idLit(item.id)})">💾 บันทึก</button>
+      <button class="qa-edit-cancel" onclick="cancelEdit(${idLit(item.id)})">ยกเลิก</button>
+      ${hasOverride ? `<button class="qa-edit-revert" id="revert-btn-${item.id}" onclick="confirmRevert(${idLit(item.id)}, this)">↺ คืนค่าเดิม</button>` : ''}
     </div>
   </div>`;
 }
 
 function startEdit(id) {
   if (!isManagerMode()) { alert('ต้องเปิดโหมดผู้จัดการก่อนจึงแก้ไขได้'); return; }
-  const outer = document.querySelector(`[onclick="toggleQA(${id})"]`);
+  const outer = document.querySelector(`[onclick="toggleQA(${idLit(id)})"]`);
   if (outer) outer.classList.add('open');
   editingIds.add(id);
-  const item = QA.find(x => x.id === id);
+  const item = getAllItems().find(x => x.id === id);
   const body = document.getElementById('ans-body-' + id);
   if (body) body.innerHTML = buildAnswerEdit(item);
   const ta = document.getElementById('edit-a-' + id);
@@ -996,7 +1012,7 @@ function startEdit(id) {
 
 function cancelEdit(id) {
   editingIds.delete(id);
-  const item = QA.find(x => x.id === id);
+  const item = getAllItems().find(x => x.id === id);
   const body = document.getElementById('ans-body-' + id);
   if (body) body.innerHTML = buildAnswerView(item);
 }
@@ -1017,7 +1033,7 @@ async function saveEdit(id) {
   }
 
   editingIds.delete(id);
-  const item = QA.find(x => x.id === id);
+  const item = getAllItems().find(x => x.id === id);
   const body = document.getElementById('ans-body-' + id);
   if (body) body.innerHTML = buildAnswerView(item);
   const qSpan = document.getElementById('qtext-' + id);
@@ -1045,11 +1061,22 @@ async function revertEdit(id) {
   }
 
   editingIds.delete(id);
-  const item = QA.find(x => x.id === id);
+  const item = getAllItems().find(x => x.id === id);
   const body = document.getElementById('ans-body-' + id);
   if (body) body.innerHTML = buildAnswerView(item);
   const qSpan = document.getElementById('qtext-' + id);
   if (qSpan) qSpan.textContent = getQ(item);
+}
+
+async function deleteSopTopic(id) {
+  if (!isManagerMode()) return;
+  if (!confirm('ลบหัวข้อ SOP นี้ออกไหม? ทุกคนจะไม่เห็นหัวข้อนี้อีกต่อไป')) return;
+  if (!firebaseReady) { alert('ต้องเชื่อมต่อ Firebase ก่อนจึงลบได้'); return; }
+  try {
+    await fbDb.ref('sop_topics/' + id).remove();
+  } catch(e) {
+    alert('ลบไม่สำเร็จ: ' + e.message);
+  }
 }
 
 // ── Image Storage: ImgBB (ไฟล์รูป) + Firebase Realtime Database (ลิงก์ + sync ทุกคน) ──
@@ -1076,7 +1103,7 @@ function initFirebase() {
     // Real-time listener — ทุกคนได้รับอัปเดตพร้อมกัน
     fbDb.ref('sop_images').on('value', snap => {
       sopImages = snap.val() || {};
-      QA.forEach(item => {
+      getAllItems().forEach(item => {
         const sec = document.getElementById('img-section-' + item.id);
         if (sec) sec.innerHTML = buildImgSection(item.id);
       });
@@ -1088,7 +1115,7 @@ function initFirebase() {
     // Real-time listener สำหรับการแก้ไขคำถาม-คำตอบ — ทุกคนเห็นพร้อมกัน
     fbDb.ref('sop_edits').on('value', snap => {
       sopEdits = snap.val() || {};
-      QA.forEach(item => {
+      getAllItems().forEach(item => {
         if (editingIds.has(item.id)) return;
         const body = document.getElementById('ans-body-' + item.id);
         if (body) body.innerHTML = buildAnswerView(item);
@@ -1098,6 +1125,12 @@ function initFirebase() {
     }, () => {
       showFirebaseStatus('error');
       loadLocalEditsFallback();
+    });
+
+    // Real-time listener สำหรับหัวข้อ SOP ใหม่ที่เพิ่มจากคำถามพนักงาน
+    fbDb.ref('sop_topics').on('value', snap => {
+      sopCustom = snap.val() || {};
+      render();
     });
   } catch(e) {
     showFirebaseStatus('error');
@@ -1143,7 +1176,7 @@ function buildImgSection(id) {
     const safeKey = key.replace(/'/g,"\\'");
     return `<div class="qa-img-thumb">
       <img src="${img.url || img.src}" title="${img.name || ''}" onclick="openLightbox('${safeSrc}')">
-      <button class="qa-img-del" onclick="event.stopPropagation();deleteImage(${id},'${safeKey}','${safeSrc}')">✕</button>
+      <button class="qa-img-del" onclick="event.stopPropagation();deleteImage(${idLit(id)},'${safeKey}','${safeSrc}')">✕</button>
     </div>`;
   }).join('');
 
@@ -1151,7 +1184,7 @@ function buildImgSection(id) {
     ${thumbs ? `<div class="qa-img-grid">${thumbs}</div>` : ''}
     <label class="qa-img-add" id="add-btn-${id}" onclick="event.stopPropagation()">
       📷 เพิ่มรูปภาพ
-      <input type="file" accept="image/*" multiple style="display:none" onchange="addImage(${id},this)">
+      <input type="file" accept="image/*" multiple style="display:none" onchange="addImage(${idLit(id)},this)">
     </label>`;
 }
 

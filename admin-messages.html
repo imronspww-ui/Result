@@ -41,6 +41,23 @@ body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f3ef; color: 
 .status-btn:hover { background: #f5f5f5; }
 .status-btn.active { background: #1a1a1a; color: white; border-color: #1a1a1a; }
 .no-data { text-align: center; color: #bbb; padding: 40px; font-size: 13px; }
+.reply-box { margin-top: 10px; border-top: 1px dashed #e8e8e8; padding-top: 10px; }
+.reply-existing { background: #f1f8e9; border-left: 3px solid #689f38; border-radius: 0 6px 6px 0; padding: 8px 12px; font-size: 13px; color: #33691e; margin-bottom: 8px; white-space: pre-wrap; }
+.reply-textarea { width: 100%; border: 1.5px solid #e0e0e0; border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: inherit; resize: vertical; min-height: 60px; box-sizing: border-box; }
+.reply-textarea:focus { outline: none; border-color: #1565C0; }
+.reply-actions { display: flex; gap: 8px; margin-top: 8px; }
+.reply-save { background: #1565C0; color: white; border: none; border-radius: 7px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.reply-save:hover { background: #0d47a1; }
+.sop-add-btn { background: none; border: 1px solid #2e7d32; color: #2e7d32; border-radius: 7px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.sop-add-btn:hover { background: #e8f5e9; }
+.sop-form { margin-top: 10px; background: #f1f8e9; border-radius: 8px; padding: 12px; }
+.sop-form label { display: block; font-size: 11px; font-weight: 600; color: #558b2f; margin: 8px 0 4px; }
+.sop-form input, .sop-form select, .sop-form textarea { width: 100%; border: 1.5px solid #c5e1a5; border-radius: 7px; padding: 7px 10px; font-size: 13px; font-family: inherit; box-sizing: border-box; }
+.sop-form textarea { min-height: 70px; resize: vertical; }
+.sop-form-actions { display: flex; gap: 8px; margin-top: 10px; }
+.sop-form-save { background: #2e7d32; color: white; border: none; border-radius: 7px; padding: 7px 16px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.sop-form-cancel { background: white; border: 1px solid #ccc; color: #666; border-radius: 7px; padding: 7px 16px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.sop-added-badge { font-size: 11px; color: #2e7d32; margin-top: 8px; display: flex; align-items: center; gap: 4px; }
 .footer { text-align: center; font-size: 11px; color: #bbb; margin-top: 24px; padding-bottom: 20px; }
 @media (max-width: 600px) { .grid-3 { grid-template-columns: 1fr; } }
 </style>
@@ -179,8 +196,77 @@ function render() {
         <button class="status-btn ${status==='อ่านแล้ว'?'active':''}" onclick="setStatus('${key}','อ่านแล้ว')">👀 อ่านแล้ว</button>
         <button class="status-btn ${status==='แก้ไขแล้ว'?'active':''}" onclick="setStatus('${key}','แก้ไขแล้ว')">✅ แก้ไขแล้ว</button>
       </div>
+
+      <div class="reply-box">
+        ${m.reply ? `<div class="reply-existing">💬 คำตอบของคุณ: ${m.reply.replace(/</g,'&lt;')}</div>` : ''}
+        <textarea class="reply-textarea" id="reply-${key}" placeholder="พิมพ์คำตอบถึงพนักงาน...">${m.reply ? m.reply.replace(/</g,'&lt;') : ''}</textarea>
+        <div class="reply-actions">
+          <button class="reply-save" onclick="saveReply('${key}')">💾 บันทึกคำตอบ</button>
+          <button class="sop-add-btn" onclick="openSopForm('${key}')">➕ เพิ่มเป็นหัวข้อ SOP</button>
+        </div>
+        <div id="sopFormSlot-${key}"></div>
+        ${m.addedToSop ? `<div class="sop-added-badge">✅ เพิ่มเป็นหัวข้อ SOP แล้ว</div>` : ''}
+      </div>
     </div>`;
   }).join('');
+}
+
+function saveReply(key) {
+  if (!fbDb) return;
+  const text = document.getElementById('reply-' + key).value.trim();
+  if (!text) { alert('กรุณาพิมพ์คำตอบก่อนบันทึก'); return; }
+  fbDb.ref('employee_messages/' + key + '/reply').set(text);
+}
+
+const SOP_CAT_OPTIONS = [
+  ['sop','📋 SOP ทั่วไป'], ['ops','🏪 การปฏิบัติงาน'], ['hardware','🔧 Hardware'],
+  ['household','🏠 Household'], ['furnishing','👟 Furnishing'], ['electronics','🔌 Electronics'],
+  ['jc','💄 J&C'], ['display','🗂 จัดแสดงสินค้า'],
+];
+
+function openSopForm(key) {
+  const m = messages[key];
+  const slot = document.getElementById('sopFormSlot-' + key);
+  if (!slot) return;
+  if (slot.innerHTML) { slot.innerHTML = ''; return; }
+
+  const replyVal = document.getElementById('reply-' + key).value.trim();
+  slot.innerHTML = `
+    <div class="sop-form">
+      <label>คำถาม (จะแสดงในหน้า SOP)</label>
+      <input type="text" id="sopQ-${key}" value="${(m.text||'').replace(/"/g,'&quot;')}">
+      <label>หมวดหมู่</label>
+      <select id="sopCat-${key}">
+        ${SOP_CAT_OPTIONS.map(([v,l]) => `<option value="${v}">${l}</option>`).join('')}
+      </select>
+      <label>คำตอบ (ใส่ HTML ได้ เช่น &lt;strong&gt;, &lt;ul&gt;&lt;li&gt;, &lt;br&gt;)</label>
+      <textarea id="sopA-${key}">${replyVal}</textarea>
+      <div class="sop-form-actions">
+        <button class="sop-form-save" onclick="saveSopTopic('${key}')">💾 บันทึกเป็นหัวข้อ SOP</button>
+        <button class="sop-form-cancel" onclick="document.getElementById('sopFormSlot-${key}').innerHTML=''">ยกเลิก</button>
+      </div>
+    </div>`;
+}
+
+async function saveSopTopic(key) {
+  const q = document.getElementById('sopQ-' + key).value.trim();
+  const cat = document.getElementById('sopCat-' + key).value;
+  const a = document.getElementById('sopA-' + key).value.trim();
+  if (!q || !a) { alert('กรุณากรอกทั้งคำถามและคำตอบ'); return; }
+
+  try {
+    await fbDb.ref('sop_topics').push({
+      q, cat, a,
+      tags: [],
+      sourceMessageKey: key,
+      createdAt: Date.now(),
+    });
+    await fbDb.ref('employee_messages/' + key + '/addedToSop').set(true);
+    document.getElementById('sopFormSlot-' + key).innerHTML = '';
+    alert('✅ เพิ่มเป็นหัวข้อ SOP แล้ว — ไปดูได้ที่หน้า sop.html');
+  } catch(e) {
+    alert('บันทึกไม่สำเร็จ: ' + e.message);
+  }
 }
 
 document.getElementById('filterRow').addEventListener('click', e => {
